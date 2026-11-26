@@ -59,13 +59,16 @@ enum SizeCalculator {
 
 enum Cleaner {
     /// Cleans a target and returns human-readable errors (empty on success).
-    static func clean(_ target: StorageTarget) -> [String] {
+    static func clean(_ target: StorageTarget, usage suppliedUsage: ApplicationUsageSnapshot? = nil) -> [String] {
         var errors: [String] = []
+        let usage = suppliedUsage ?? (target.needsUsageCheck
+            ? ApplicationUsageSnapshot.capture(includeApplications: !target.requiresAppsClosed.isEmpty) : nil)
         let paths = target.paths.filter { path in
-            guard PathGlob.exists(path.path), let root = target.projectRootsByPath[path.path] else { return true }
-            switch ProjectCleanupGuard.check(path, projectRoot: root) {
+            guard PathGlob.exists(path.path) else { return true }
+            switch StorageSafety.check(path, target: target, usage: usage) {
             case .allowed: return true
             case .inUse: errors.append(tr("cleanup.protected_in_use", ["path": path.path]))
+            case .recent: errors.append(tr("cleanup.protected_recent", ["path": path.path]))
             case .tracked: errors.append(tr("cleanup.protected_tracked", ["path": path.path]))
             case .unverified: errors.append(tr("cleanup.protected_unknown", ["path": path.path]))
             }

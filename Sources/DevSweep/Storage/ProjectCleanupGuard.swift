@@ -3,7 +3,7 @@ import Foundation
 
 /// Rechecks project artifacts at execution time. An inconclusive probe preserves the artifact.
 enum ProjectCleanupGuard {
-    enum Verdict: Equatable { case allowed, inUse, tracked, unverified }
+    typealias Verdict = CleanupGuardVerdict
 
     static func check(
         _ path: URL, projectRoot: URL, handles snapshot: ShellResult? = nil,

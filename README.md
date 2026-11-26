@@ -153,6 +153,47 @@ stays visible, and **Cleanup history** opens recent attempts, errors, and sessio
 the local cleanup log. Reported reclaimed bytes are estimates, not a guarantee of immediate free
 space on APFS or after moving files to Trash.
 
+## Mac cleanup
+
+The **Mac** group in Storage starts with disk caches for standard Chrome, Chromium, Edge and Brave
+profiles, Slack web/rendering caches (including its sandboxed layout), Slack `.log` files older
+than 30 days and user crash reports older than 30 days. These categories are manual: they do not
+join automatic recommendations. Browser cookies, passwords, history, Slack sessions and local
+storage are outside their path rules. Custom browser profile locations are not scanned.
+
+Close the owning application before cleaning its cache. Review checks bundle identifiers (including
+helpers and renamed app bundles) and open files; execution checks again. An uncertain check keeps
+the item. Old logs and crash reports require individual confirmation and move to Trash because
+historical diagnostics cannot be regenerated. A file that becomes recent after scanning is kept.
+
+Cache layout references: [Chromium user/cache directories](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md)
+and [Electron session storage](https://www.electronjs.org/docs/latest/api/app/). The rules select only
+named cache subdirectories; they never sweep an entire application profile or system log tree.
+
+## Delivery checklist
+
+“Tested” below means fixture-based automated verification. App validation means an interactive
+check of that feature in the packaged app; a successful build alone does not count.
+
+| Feature | Implemented | Tested | Validated in app |
+|---|---|---|---|
+| External project cleanup | Yes | Yes | Confirmed by user |
+| Project/path review, progress and history | Yes | Yes | Pending |
+| Chrome disk cache | Yes | Yes | Pending |
+| Chromium disk cache | Yes | Yes | Pending |
+| Edge disk cache | Yes | Yes | Pending |
+| Brave disk cache | Yes | Yes | Pending |
+| Slack web/rendering caches | Yes | Yes | Pending |
+| Slack logs older than 30 days | Yes | Yes | Pending |
+| User crash reports older than 30 days | Yes | Yes | Pending |
+| More app caches, cloud/Office, virtualization and orphan cleanup | Planned | Pending | Pending |
+| Additional development stacks and artifact types | Planned | Pending | Pending |
+| Disk explorer and large-file review | Planned | Pending | Pending |
+| macOS installer discovery | Planned | Pending | Pending |
+| Assisted application uninstall | Planned | Pending | Pending |
+| Explicit macOS maintenance actions | Planned | Pending | Pending |
+| Expanded monitoring and diagnostics | Planned | Pending | Pending |
+
 ## Customizing
 
 Stack knowledge lives in YAML files under [`stacks/`](stacks), one per stack. You can add your own without rebuilding:

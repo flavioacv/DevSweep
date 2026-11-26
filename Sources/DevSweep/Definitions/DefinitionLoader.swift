@@ -185,6 +185,17 @@ enum DefinitionLoader {
                 problems.append("unknown provider '\(provider)' (available: \(StorageProviders.names.sorted().joined(separator: ", ")))")
             }
 
+            if let owners = definition.requiresAppsClosed {
+                if owners.isEmpty || owners.contains(where: {
+                    $0.range(of: #"^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$"#, options: .regularExpression) == nil
+                }) {
+                    problems.append("requires_apps_closed needs explicit bundle identifiers, without wildcards")
+                }
+                if !(definition.stopProcesses ?? []).isEmpty || definition.run != nil {
+                    problems.append("requires_apps_closed cannot stop processes or run commands")
+                }
+            }
+
             for spec in definition.paths ?? [] {
                 if !(spec.glob.hasPrefix("~/") || spec.glob.hasPrefix("${")) {
                     problems.append("path '\(spec.glob)' must start with ~/ or ${VAR:-~/...}; absolute paths are not allowed")
@@ -192,6 +203,9 @@ enum DefinitionLoader {
                 for pattern in [spec.nameMatches, spec.versionPattern].compactMap({ $0 })
                 where (try? NSRegularExpression(pattern: pattern)) == nil {
                     problems.append("invalid regular expression '\(pattern)'")
+                }
+                if let days = spec.olderThanDays, days < 1 {
+                    problems.append("older_than_days must be positive")
                 }
                 if let sort = spec.sortBy, !["modified", "version"].contains(sort) {
                     problems.append("sort_by must be modified or version")

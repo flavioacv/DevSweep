@@ -38,11 +38,15 @@ Open **General workspace** from the menu bar to use the larger window. The exist
 | Logs | Discover logs older than 30 days in user Logs, application Logs and sandbox containers, without requiring an app-specific rule. |
 | Caches | Find recognizable cache directories and `CACHEDIR.TAG` folders. Unknown owners without a valid cache tag remain analysis-only; identified owners must be closed before removal. |
 | Projects | Discover 34 artifact folder names across confirmed workspaces using project markers. Git-tracked content, nested repositories and open artifacts are protected. These are manual candidates, not a claim that every artifact is unused. |
-| Storage explorer | Browse folders and local external volumes, sort by allocated size, search, reveal in Finder and review selected items. |
+| Storage explorer | Browse folders/local external volumes or recursively find large files. Filter by allocated size, modification age and extension; sort by size, date or name; reveal in Finder and review selected items. |
 | Installers | Find macOS/mobile installer files and ZIPs with installer entries, inspecting a bounded central directory without extraction. |
 | Applications | Inventory installed application bundles and move selected third-party bundles to Trash. Application Support, preferences and personal data are preserved. Apple apps remain analysis-only. |
 | Maintenance | Inspect launch agents, preference-file validity, Spotlight, login items and filesystem integrity. DNS resolver cache and QuickLook cache refresh are separate confirmed actions. |
 | Monitoring | Refresh CPU per core, memory, swap, load, uptime, local volume capacity, network rates per interface, processes, thermal pressure and battery charge when available. |
+
+The explorer's **Find large files** mode starts at 100 MB in the interface and searches the selected folder and subfolders. Change the minimum to any size, 100 MB, 1 GB or 5 GB; filter by modification age and comma-separated extensions. The search skips app bundles, Git internals, links, other mounts and online-only cloud files. It is bounded to 100,000 entries, 32 levels and 30 seconds; reaching a limit produces a partial result and disables removal until a narrower search completes. The selected volume's free/total capacity is shown separately from result sizes. JSON exports respect search/filters/selection and include the root, mode, filter settings, volume capacity and independent discovery/measurement completeness.
+
+Cached results are checked against root and authorized-file identities off the main actor before reuse. Measurement updates are published in batches; missing or incomplete sizes have an explicit finished state instead of a perpetual spinner. Removed/replaced authorized files or roots invalidate the cache. Newly created files can still require **Refresh** within the 60-second cache lifetime.
 
 Searches support cancellation, bounded traversal and explicit partial results. Measurements that time out or fail are not reported as zero or eligible for removal. Results and monitoring snapshots can be exported as JSON. Folder scans do not follow symlinks or cross mounts and skip online-only cloud files.
 

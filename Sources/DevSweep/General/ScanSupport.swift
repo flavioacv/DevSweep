@@ -69,7 +69,8 @@ struct WalkReport: Sendable {
 /// Bounded metadata-only walk. Never follows aliases, other mounts or online-only cloud files.
 enum DirectoryWalker {
     static func walk(_ root: URL, depth: Int, control: ScanControl, limit: Int = 50_000,
-                     seconds: TimeInterval = 15, skip: Set<String> = [], pruneNames: Set<String> = []) -> WalkReport {
+                     seconds: TimeInterval = 15, skip: Set<String> = [], pruneNames: Set<String> = [],
+                     reportDepthLimit: Bool = false) -> WalkReport {
         var report = WalkReport()
         guard let identity = FileIdentity.read(root) else {
             report.complete = false; report.issues = [root.path]; return report
@@ -99,6 +100,9 @@ enum DirectoryWalker {
                         let normalized = url.resolvingSymlinksInPath().standardizedFileURL
                         report.directories.append(normalized)
                         if level < depth && url.pathExtension.lowercased() != "app" && !pruneNames.contains(url.lastPathComponent) { pending.append((normalized, level + 1)) }
+                        else if reportDepthLimit && level >= depth && url.pathExtension.lowercased() != "app" && !pruneNames.contains(url.lastPathComponent) {
+                            report.complete = false; report.issues.append(tr("explorer.depth_limit", ["path": normalized.path]))
+                        }
                     } else if info[.type] as? FileAttributeType == .typeRegular {
                         report.files.append(url.resolvingSymlinksInPath().standardizedFileURL)
                     }

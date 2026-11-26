@@ -1,3 +1,4 @@
+import Darwin
 import XCTest
 @testable import DevSweep
 
@@ -29,6 +30,44 @@ final class StoragePrecisionTests: XCTestCase {
         XCTAssertTrue(both.complete); XCTAssertEqual(both.files, 2); XCTAssertEqual(both.uniqueFiles, 1)
         XCTAssertEqual(both.allocatedBytes, footprint.allocatedBytes)
         XCTAssertEqual(both.potentialAfterTrashBytes, footprint.allocatedBytes)
+    }
+
+    func testAPFSClonesAreDeduplicatedUntilCopyOnWriteDiverges() throws {
+        let original = root.appendingPathComponent("original.bin")
+        let cloned = root.appendingPathComponent("cloned.bin")
+        try Data(repeating: 0x5A, count: 65_536).write(to: original)
+        XCTAssertNil(FileFootprint.readCloneIdentity(root.appendingPathComponent("missing.bin").path))
+
+        let rc = clonefile(original.path, cloned.path, 0)
+        if rc != 0 && (errno == ENOTSUP || errno == EXDEV) {
+            throw XCTSkip("Temporary directory filesystem does not support APFS clones")
+        }
+        XCTAssertEqual(rc, 0)
+
+        let origFP = try XCTUnwrap(FileFootprint.read(original))
+        let cloneFP = try XCTUnwrap(FileFootprint.read(cloned))
+        XCTAssertNotEqual(origFP.inode, cloneFP.inode)
+        XCTAssertNotNil(origFP.cloneID)
+        XCTAssertEqual(origFP.cloneID, cloneFP.cloneID)
+        XCTAssertTrue(origFP.sharesAllBlocks)
+        XCTAssertTrue(cloneFP.sharesAllBlocks)
+
+        let combined = FileSpaceEstimate.calculate(paths: [original, cloned])
+        XCTAssertTrue(combined.complete)
+        XCTAssertEqual(combined.files, 2)
+        XCTAssertEqual(combined.uniqueFiles, 2)
+        XCTAssertEqual(combined.deduplicatedClones, 1)
+        XCTAssertTrue(combined.apfsClonesDeduplicated)
+        XCTAssertEqual(combined.allocatedBytes, origFP.allocatedBytes)
+        XCTAssertEqual(combined.potentialAfterTrashBytes, origFP.allocatedBytes)
+
+        // Modifying the clone breaks shared blocks (copy-on-write), so both count separately.
+        try Data(repeating: 0xA5, count: 65_536).write(to: cloned)
+        let divergedFP = try XCTUnwrap(FileFootprint.read(cloned))
+        XCTAssertFalse(divergedFP.sharesAllBlocks)
+        let afterWrite = FileSpaceEstimate.calculate(paths: [original, cloned])
+        XCTAssertEqual(afterWrite.deduplicatedClones, 0)
+        XCTAssertEqual(afterWrite.allocatedBytes, origFP.allocatedBytes + divergedFP.allocatedBytes)
     }
 
     func testSparseFilesUseAllocatedBlocksAndLinksAndDirectoriesAreUnavailable() throws {
@@ -121,7 +160,9 @@ final class StoragePrecisionTests: XCTestCase {
         model.area = .installers; await model.scan(force: true); await model.estimateVisibleFiles()
         XCTAssertNotNil(model.fileSpaceEstimate)
         let output = try JSONSerialization.jsonObject(with: model.exportData()) as? [String: Any]
-        XCTAssertNotNil(output?["file_space_estimate"])
+        let exportedEstimate = try XCTUnwrap(output?["file_space_estimate"] as? [String: Any])
+        XCTAssertNotNil(exportedEstimate["deduplicated_apfs_clones"])
+        XCTAssertNotNil(exportedEstimate["apfs_shared_blocks_deduplicated"])
         XCTAssertNotNil((output?["entries"] as? [[String: Any]])?.first?["source"])
         model.selected = Set(model.report.entries.map(\.id)); XCTAssertNil(model.fileSpaceEstimate)
         await model.estimateVisibleFiles(); model.search = "absent"; XCTAssertNil(model.fileSpaceEstimate)

@@ -385,6 +385,7 @@ docker.partial: "Builder step finished, but the engine changed or became unavail
 footprint.calculate: "Estimate selected/filtered file space"
 footprint.summary: "{size} allocated across {count} unique files · up to {possible} after permanent Trash removal"
 footprint.links: "{count} files have hardlinks outside this selection."
+footprint.clones: "{count} APFS clone(s) deduplicated within this selection."
 footprint.partial: "Partial estimate: directories or unavailable files are not included."
 footprint.notice: "Moving to Trash does not immediately free space. Hardlinks count once and only contribute potential space when all links are selected. APFS clones/shared blocks and filesystem snapshots can reduce the actual recovery; this is an upper bound, not a guarantee."
 installer.downloads: "Downloads"

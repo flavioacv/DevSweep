@@ -384,6 +384,7 @@ docker.partial: "La etapa del builder terminó, pero el motor cambió o no está
 footprint.calculate: "Estimar espacio de archivos seleccionados/filtrados"
 footprint.summary: "{size} asignados en {count} archivos únicos · hasta {possible} tras eliminación permanente de la Papelera"
 footprint.links: "{count} archivos tienen hardlinks fuera de esta selección."
+footprint.clones: "{count} clon(es) APFS deduplicado(s) en esta selección."
 footprint.partial: "Estimación parcial: no incluye carpetas o archivos no disponibles."
 footprint.notice: "Enviar a la Papelera no libera espacio inmediatamente. Los hardlinks cuentan una vez y solo aportan espacio potencial cuando todos están seleccionados. Clones/bloques APFS y snapshots pueden reducir la recuperación; es un límite superior, no una garantía."
 installer.downloads: "Descargas"

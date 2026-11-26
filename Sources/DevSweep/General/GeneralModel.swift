@@ -30,7 +30,7 @@ final class GeneralModel: ObservableObject {
     @Published private(set) var smartStatus: [String: String] = [:]
     @Published private(set) var cpuHistory: [Double] = []
     @Published private(set) var sustainedCPU = false
-    private var highCPUStart: Date?
+    private var cpuTracker = CPULoadHistory()
     private var lastSMART = Date.distantPast
     @Published private(set) var maintenanceOutput = ""
     @Published private(set) var runningMaintenance: MaintenanceTask?
@@ -174,18 +174,17 @@ final class GeneralModel: ObservableObject {
         } onCancel: { flag.cancel() }
     }
 
+    var diagnostics: MonitorDiagnostics? {
+        monitor.map { MonitorDiagnostics.evaluate($0, cpu: cpu, sustainedCPU: sustainedCPU, smart: smartStatus) }
+    }
+
     func refreshMonitor() async {
         let next = await Task.detached(priority: .utility) { SystemMonitor.capture() }.value
-        if let previous = monitor, next.date.timeIntervalSince(previous.date) > 15 { highCPUStart = nil; cpuHistory = [] }
         cpu = monitor.flatMap { SystemMonitor.cpuFractions(previous: $0.cpuTicks, current: next.cpuTicks) }
         network = SystemMonitor.networkRates(previous: monitor, current: next)
         diskRates = HardwareMonitor.rates(previous: monitor?.hardware, current: next.hardware, seconds: monitor.map { next.date.timeIntervalSince($0.date) } ?? 0)
-        if let cpu, !cpu.isEmpty {
-            let mean = cpu.reduce(0, +) / Double(cpu.count)
-            cpuHistory = Array((cpuHistory + [mean]).suffix(120))
-            if mean > 0.9 { highCPUStart = highCPUStart ?? next.date } else { highCPUStart = nil }
-            sustainedCPU = highCPUStart.map { next.date.timeIntervalSince($0) >= 60 } ?? false
-        }
+        cpuTracker.update(cpu, at: next.date)
+        cpuHistory = cpuTracker.values; sustainedCPU = cpuTracker.sustained
         monitor = next
         if next.date.timeIntervalSince(lastSMART) >= 60 {
             lastSMART = next.date
@@ -254,6 +253,10 @@ final class GeneralModel: ObservableObject {
                 "network": network.map { ["interface": $0.id, "received_bytes_per_second": $0.received, "sent_bytes_per_second": $0.sent] as [String: Any] },
                 "processes": monitor.processes.map { ["pid": $0.pid, "name": $0.exeName, "cpu_percent": $0.cpu, "rss_bytes": $0.rssBytes] as [String: Any] }]
             if let cache = monitor.system.memCache { output["memory_cache"] = cache }
+            output["memory_available"] = monitor.system.memoryAvailable
+            output["memory_pressure_available"] = monitor.system.pressureAvailable
+            if monitor.system.pressureAvailable { output["memory_pressure"] = monitor.system.pressure.rawValue }
+            if let diagnostics { output["diagnostics"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(diagnostics)) }
             output["hardware"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(monitor.hardware))
             output["disk_rates"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(diskRates))
             output["smart"] = smartStatus; output["cpu_history"] = cpuHistory; output["sustained_cpu"] = sustainedCPU

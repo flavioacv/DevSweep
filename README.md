@@ -81,6 +81,8 @@ For installer results and large-file searches, **Calculate file space** measures
 
 Installer discovery skips dataless/online-only files without downloading them. Managed Mail/iCloud/container locations are analysis-only, including when explicitly selected. Telegram coverage is the exported Downloads/Telegram Desktop folder, not its private cache. Legacy iPhone/iPad/iPod Software Updates caches offer only recognized IPSW archives older than 30 days; active device-update tools protect firmware targets. Recognition checks root BuildManifest.plist and Restore.plist entries in a bounded ZIP/ZIP64 central directory (1,000 entries/1 MiB), not firmware signatures or payload authenticity. Arbitrary firmware, backups and active updates remain outside automatic cleanup.
 
+Monitoring includes a consolidated diagnostic summary with explicit thresholds: CPU above 90% for 60 continuous seconds, macOS memory/thermal pressure, writable volumes with at most 10% free (critical at 5%), SMART Failing and estimated battery capacity below 80% of design. These observations do not constitute a hardware service diagnosis or health score. Missing core readings produce an incomplete assessment; unavailable optional GPU/SMART/sensor readings remain visible. Memory/pressure collection failures are reported explicitly rather than displayed as normal. CPU alert continuity resets when samples are missing or more than 15 seconds apart. JSON and NDJSON include stable diagnostic IDs, severities, evidence values and unavailable categories.
+
 ## Install
 
 ```bash

@@ -31,6 +31,7 @@ struct MonitorSnapshot: Sendable {
     var load: [Double]
     var thermal: String
     var hardware = HardwareSnapshot()
+    var thermalLevel: Int? = nil
 }
 
 enum SystemMonitor {
@@ -56,7 +57,8 @@ enum SystemMonitor {
         return MonitorSnapshot(system: SystemStats.snapshot(), cpuTicks: cpuTicks(), network: network,
             volumes: volumes(), processes: processes.sorted { $0.cpu > $1.cpu }, swap: swapOK ? swap.xsu_used : nil,
             battery: battery.0, charging: battery.1, uptime: ProcessInfo.processInfo.systemUptime,
-            load: loadOK ? averages : [], thermal: thermal, hardware: hardware)
+            load: loadOK ? averages : [], thermal: thermal, hardware: hardware,
+            thermalLevel: (0...3).contains(ProcessInfo.processInfo.thermalState.rawValue) ? ProcessInfo.processInfo.thermalState.rawValue : nil)
     }
 
     static func cpuFractions(previous: [[UInt64]], current: [[UInt64]]) -> [Double]? {

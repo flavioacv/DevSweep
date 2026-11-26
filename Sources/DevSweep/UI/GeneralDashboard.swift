@@ -378,6 +378,20 @@ private struct GeneralMonitorView: View {
                         Spacer()
                         Text(snapshot.date, format: .dateTime.hour().minute().second())
                     }.font(.caption).foregroundStyle(.secondary)
+                    if let diagnostics = model.diagnostics {
+                        Text(tr("diagnostics.title")).font(.headline)
+                        Text(diagnostics.title).font(.subheadline.weight(.semibold))
+                        ForEach(diagnostics.findings) { finding in
+                            Label(finding.message, systemImage: finding.severity == .critical ? "exclamationmark.octagon.fill" : "exclamationmark.triangle.fill")
+                                .font(.caption).foregroundStyle(finding.severity == .critical ? Color.red : Color.orange)
+                        }
+                        if !diagnostics.unavailable.isEmpty {
+                            Text(tr("diagnostics.unavailable", ["metrics": diagnostics.unavailable.map(MonitorDiagnostics.label).joined(separator: ", ")]))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text(tr("diagnostics.notice")).font(.caption2).foregroundStyle(.secondary)
+                        Divider()
+                    }
                     if let cpu = model.cpu {
                         MeterView(title: "CPU", fraction: cpu.reduce(0, +) / Double(cpu.count),
                                   caption: (cpu.reduce(0, +) / Double(cpu.count)).formatted(.percent.precision(.fractionLength(0))), tint: .blue)
@@ -388,8 +402,10 @@ private struct GeneralMonitorView: View {
                             }
                         }
                     } else { Text(tr("general.sampling")).font(.caption) }
+                    if snapshot.system.memoryAvailable {
                     MeterView(title: tr("general.memory"), fraction: snapshot.system.memFraction,
                               caption: "\(Fmt.memory(snapshot.system.memUsed)) / \(Fmt.memory(snapshot.system.memTotal))", tint: .purple)
+                    } else { Text(tr("storage.unavailable")).font(.caption) }
                     Text(tr("general.swap", ["size": snapshot.swap.map { Fmt.memory(Int64(clamping: $0)) } ?? tr("storage.unavailable")]))
                         .font(.caption)
                     Text(tr("general.thermal", ["state": snapshot.thermal])).font(.caption)

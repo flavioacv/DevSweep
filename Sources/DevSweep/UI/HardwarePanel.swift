@@ -22,7 +22,7 @@ struct HardwarePanel: View {
             }
             if model.sustainedCPU { Text(tr("hardware.cpu_alert")).font(.callout).foregroundStyle(.orange) }
             if let cache = snapshot.system.memCache { Text(tr("hardware.memory_cache", ["value": Fmt.memory(cache)])).font(.caption) }
-            Text(tr("hardware.pressure", ["value": snapshot.system.pressure.label])).font(.caption)
+            Text(tr("hardware.pressure", ["value": snapshot.system.pressureAvailable ? snapshot.system.pressure.label : tr("storage.unavailable")])).font(.caption)
             if hardware.gpus.isEmpty { Text(tr("hardware.gpu_unavailable")).font(.caption) }
             ForEach(hardware.gpus) { gpu in
                 if let fraction = gpu.utilization {

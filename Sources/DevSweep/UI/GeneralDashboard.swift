@@ -12,15 +12,19 @@ struct GeneralDashboard: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
                 Text("DevSweep").font(.title2.bold()).padding(.bottom, 12)
-                ForEach(GeneralArea.allCases) { area in
-                    Button {
-                        model.cancel(); model.area = area; model.search = ""; model.selected = []
-                    } label: {
-                        Label(area.title, systemImage: area.icon)
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(9)
-                            .background(RoundedRectangle(cornerRadius: 7).fill(model.area == area ? Color.accentColor.opacity(0.15) : .clear))
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 5) {
+                        ForEach(GeneralArea.allCases) { area in
+                            Button {
+                                model.cancel(); model.area = area; model.search = ""; model.selected = []
+                            } label: {
+                                Label(area.title, systemImage: area.icon)
+                                    .frame(maxWidth: .infinity, alignment: .leading).padding(9)
+                                    .background(RoundedRectangle(cornerRadius: 7).fill(model.area == area ? Color.accentColor.opacity(0.15) : .clear))
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
                 Spacer()
                 Button(tr("cleanup.history")) { showingHistory() }
@@ -91,14 +95,14 @@ struct GeneralDashboard: View {
                     } label: { Image(systemName: "arrow.clockwise") }
                     .help(tr("header.scan_now"))
                 }
-                if [.logs, .caches, .explorer, .installers, .projects].contains(model.area) {
+                if [.logs, .caches, .explorer, .installers, .projects, .external].contains(model.area) {
                     Button(tr("general.choose_folder")) { chooseFolder() }.disabled(model.scanning)
                 }
                 if model.area != .maintenance {
                     Button(tr("general.export")) { export() }.disabled(model.scanning)
                 }
             }
-            if [.logs, .caches, .explorer, .installers, .projects].contains(model.area) {
+            if [.logs, .caches, .explorer, .installers, .projects, .external].contains(model.area) {
                 HStack {
                     if model.area == .explorer {
                         Button { model.choose(model.root.deletingLastPathComponent()); Task { await model.scan() } } label: { Image(systemName: "arrow.up") }
@@ -113,6 +117,9 @@ struct GeneralDashboard: View {
 
     private var results: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if model.area == .temporaries { Text(tr("hygiene.temp_notice")).font(.caption).foregroundStyle(.secondary) }
+            if model.area == .trash { Text(tr("hygiene.trash_notice")).font(.caption).foregroundStyle(.secondary) }
+            if model.area == .external { Text(tr("hygiene.external_notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .explorer { explorerControls }
             TextField(tr("general.search"), text: $model.search).textFieldStyle(.roundedBorder)
             HStack {

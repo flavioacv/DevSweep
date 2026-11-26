@@ -295,3 +295,12 @@ explorer.recursive_notice: "Busca en subcarpetas por espacio asignado. Omite paq
 explorer.depth_limit: "Límite de profundidad alcanzado en {path}; elige esta carpeta para continuar."
 explorer.unmeasured: "Tamaño no disponible o incompleto: {path}"
 explorer.partial_measurement: "Búsqueda completa; algunos tamaños están incompletos"
+
+hygiene.temporaries: "Temporales antiguos"
+hygiene.trash: "Revisar Papelera"
+hygiene.external: "Metadatos externos"
+hygiene.temp_unavailable: "No se pudo verificar la carpeta temporal privada de este usuario."
+hygiene.choose_external: "Elige una carpeta en un volumen externo local conectado y con escritura."
+hygiene.temp_notice: "Solo archivos regulares .tmp/.temp de este usuario, modificados hace más de 7 días en la carpeta temporal privada. Los archivos abiertos están protegidos. La eliminación requiere revisión y envía a la Papelera."
+hygiene.trash_notice: "Revisión de solo lectura de la Papelera de la cuenta. Abre los elementos en Finder para restaurar o gestionar. Esta vista no vacía la Papelera ni elimina archivos permanentemente."
+hygiene.external_notice: "Revisa metadatos .DS_Store antiguos y archivos en .TemporaryItems (más de 7 días, de este usuario). AppleDouble se preserva porque puede contener resource forks. Se preservan la Papelera del volumen, respaldos e índices. Búsqueda: 12 niveles, 50.000 entradas y 15 segundos; resultados parciales no permiten eliminación."

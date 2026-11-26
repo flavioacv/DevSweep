@@ -296,3 +296,12 @@ explorer.recursive_notice: "Searches subfolders by allocated size. Skips app bun
 explorer.depth_limit: "Depth limit reached at {path}; choose this folder to continue."
 explorer.unmeasured: "Size unavailable or incomplete: {path}"
 explorer.partial_measurement: "Discovery complete; some sizes are incomplete"
+
+hygiene.temporaries: "Old temporary files"
+hygiene.trash: "Review Trash"
+hygiene.external: "External metadata"
+hygiene.temp_unavailable: "The private temporary folder could not be verified for this user."
+hygiene.choose_external: "Choose a folder on a connected, writable local external volume."
+hygiene.temp_notice: "Only regular .tmp/.temp files owned by this user and modified over 7 days ago in the private temporary folder. Open files are protected. Removal requires review and moves files to Trash."
+hygiene.trash_notice: "Read-only review of the account Trash. Reveal items in Finder to restore or manage them. This view does not empty Trash or permanently delete files."
+hygiene.external_notice: "Review old .DS_Store metadata and files in .TemporaryItems (over 7 days, owned by this user). AppleDouble is preserved because it may contain resource forks. Volume Trash, backups and indexing folders are preserved. Search: 12 levels, 50,000 entries, 15 seconds; partial results cannot be removed."

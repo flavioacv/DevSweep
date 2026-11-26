@@ -295,3 +295,12 @@ explorer.recursive_notice: "Busca nas subpastas pelo espaço alocado. Ignora pac
 explorer.depth_limit: "Limite de profundidade atingido em {path}; escolha essa pasta para continuar."
 explorer.unmeasured: "Tamanho indisponível ou incompleto: {path}"
 explorer.partial_measurement: "Busca concluída; alguns tamanhos estão incompletos"
+
+hygiene.temporaries: "Temporários antigos"
+hygiene.trash: "Revisar Lixeira"
+hygiene.external: "Metadados externos"
+hygiene.temp_unavailable: "Não foi possível verificar a pasta temporária privada deste usuário."
+hygiene.choose_external: "Escolha uma pasta em um volume externo local conectado e gravável."
+hygiene.temp_notice: "Somente arquivos regulares .tmp/.temp deste usuário, modificados há mais de 7 dias na pasta temporária privada. Arquivos abertos são protegidos. A remoção exige revisão e envia à Lixeira."
+hygiene.trash_notice: "Revisão somente para leitura da Lixeira da conta. Abra os itens no Finder para restaurar ou gerenciar. Esta área não esvazia a Lixeira nem exclui arquivos permanentemente."
+hygiene.external_notice: "Revise metadados .DS_Store antigos e arquivos em .TemporaryItems (mais de 7 dias, deste usuário). AppleDouble é preservado, pois pode conter resource forks. Lixeira do volume, backups e índices são preservados. Busca: 12 níveis, 50 mil entradas e 15 segundos; resultados parciais não permitem remoção."

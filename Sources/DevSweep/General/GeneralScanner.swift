@@ -38,6 +38,7 @@ enum GeneralArea: String, CaseIterable, Identifiable, Sendable {
 struct GeneralEntry: Identifiable, Sendable {
     let target: StorageTarget
     let modified: Date?
+    var association: AppAssociation? = nil
     var id: String { target.id }
     var url: URL { target.paths[0] }
     var removable: Bool { target.pathAuthorizations.count == target.paths.count }

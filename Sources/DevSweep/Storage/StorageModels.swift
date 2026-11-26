@@ -74,6 +74,7 @@ struct StorageTarget: Identifiable, Sendable {
 
     var pathAuthorizations: [String: PathAuthorization] = [:]
     var protectNestedRepositories = false
+    var appRemovalContext: AppRemovalContext? = nil
 
     var needsUsageCheck: Bool { !pathAuthorizations.isEmpty || !requiresAppsClosed.isEmpty || !pathRules.isEmpty || !projectRootsByPath.isEmpty }
 
@@ -93,7 +94,7 @@ struct StorageTarget: Identifiable, Sendable {
                       requiresAppsClosed: requiresAppsClosed,
                       pathRules: pathRules.filter { pair in paths.contains { $0.path == pair.key } },
                       pathAuthorizations: pathAuthorizations.filter { pair in paths.contains { $0.path == pair.key } },
-                      protectNestedRepositories: protectNestedRepositories)
+                      protectNestedRepositories: protectNestedRepositories, appRemovalContext: appRemovalContext)
     }
 
     var cleanupUnits: [StorageTarget] {

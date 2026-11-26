@@ -48,7 +48,7 @@ struct GeneralDashboard: View {
             .padding(18).frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 850, minHeight: 600)
-        .task(id: model.area) {
+        .task(id: model.area.rawValue + (model.area == .applications ? model.uninstallApplication?.path ?? "" : "")) {
             if model.area == .monitor {
                 while !Task.isCancelled {
                     await model.refreshMonitor()
@@ -117,6 +117,12 @@ struct GeneralDashboard: View {
 
     private var results: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if model.area == .applications {
+                if model.uninstallApplication != nil {
+                    Button(tr("uninstall.back")) { model.uninstallApplication = nil }
+                    Text(tr("uninstall.notice")).font(.caption).foregroundStyle(.secondary)
+                } else { Text(tr("uninstall.open_help")).font(.caption).foregroundStyle(.secondary) }
+            }
             if model.area == .temporaries { Text(tr("hygiene.temp_notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .trash { Text(tr("hygiene.trash_notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .external { Text(tr("hygiene.external_notice")).font(.caption).foregroundStyle(.secondary) }
@@ -155,7 +161,7 @@ struct GeneralDashboard: View {
                 }
             }
             HStack {
-                Button(tr("review.select_all")) { model.selected = Set(model.visible.map(\.id)) }
+                Button(tr("review.select_all")) { model.selected = Set(model.visible.filter { $0.association?.kind.personal != true }.map(\.id)) }
                 Button(tr("review.select_none")) { model.selected = [] }
                 Spacer()
                 Button(tr("general.review_count", ["count": model.selected.count])) {
@@ -213,8 +219,16 @@ struct GeneralDashboard: View {
                 Text(entry.url.path).font(.caption2).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
                 if let date = entry.modified { Text(date, format: .dateTime.day().month().year()).font(.caption2).foregroundStyle(.secondary) }
                 if !entry.removable { Text(tr("general.read_only")).font(.caption2).foregroundStyle(.orange) }
+                if let association = entry.association {
+                    Text(association.kind.title).font(.caption).foregroundStyle(association.kind.personal ? Color.orange : .secondary)
+                    Text(association.evidence).font(.caption2).foregroundStyle(.secondary)
+                }
             }
             Spacer()
+            if model.area == .applications && model.uninstallApplication == nil && entry.removable {
+                Button(tr("uninstall.inspect")) { model.uninstallApplication = entry.url }
+                    .controlSize(.small).disabled(model.scanning)
+            }
             if let measurement = model.measurements[entry.id] { MeasurementLabel(measurement: measurement).font(.caption.monospacedDigit()) }
             else if model.scanning { ProgressView().controlSize(.mini) }
             else { Text(tr("storage.unavailable")).font(.caption).foregroundStyle(.orange) }
@@ -236,12 +250,13 @@ struct GeneralDashboard: View {
                 Button(tr("review.close")) { showingReview = false }
             }
             Text(tr("general.removal_notice")).font(.caption).foregroundStyle(.secondary)
-            if model.area == .applications { Text(tr("general.app_data_kept")).font(.caption) }
+            if model.area == .applications { Text(model.uninstallApplication == nil ? tr("general.app_data_kept") : tr("uninstall.notice")).font(.caption) }
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(review) { entry in
                         HStack {
                             Text(entry.url.path).font(.caption).textSelection(.enabled)
+                            if let association = entry.association { Text(association.kind.title).font(.caption).foregroundStyle(.secondary) }
                             Spacer()
                             if let size = model.measurements[entry.id] { MeasurementLabel(measurement: size).font(.caption) }
                         }
@@ -252,7 +267,12 @@ struct GeneralDashboard: View {
             ActionButton(title: tr("general.trash_count", ["count": eligible.count]), symbol: "trash", confirm: true,
                          busy: app.cleanupProgress != nil) {
                 showingReview = false
-                Task { await app.cleanGeneral(eligible.map(\.target)); await model.scan(force: true) }
+                let ordered = eligible.sorted { ($0.association?.kind == .application ? 1 : 0) < ($1.association?.kind == .application ? 1 : 0) }
+                Task {
+                    await app.cleanGeneral(ordered.map(\.target))
+                    if model.area == .applications { model.uninstallApplication = nil }
+                    await model.scan(force: true)
+                }
             }
             .disabled(eligible.isEmpty || !model.report.complete || app.isScanningStorage || app.isPerformingAll)
         }

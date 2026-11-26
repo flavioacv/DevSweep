@@ -111,6 +111,8 @@ enum AppUninstall {
             if !soleOwner || kind == .container { target.pathAuthorizations = [:] }
             report.entries.append(GeneralEntry(target: target, modified: PathGlob.modificationDate(file), association: AppAssociation(bundleID: id, kind: kind)))
         }
+        let references = ConfigReferences.scan(home: home, application: application, bundleID: id, control: control)
+        report.references = references.references; report.referencesComplete = references.complete; report.referenceIssues = references.issues
         return report
     }
 }

@@ -20,6 +20,8 @@ struct SystemSnapshot: Sendable {
     var diskFree: Int64
     var diskTotal: Int64
     var memCache: Int64? = nil
+    var memoryAvailable = true
+    var pressureAvailable = true
 
     var memFraction: Double { memTotal > 0 ? Double(memUsed) / Double(memTotal) : 0 }
     var memoryTight: Bool { pressure != .normal || memFraction > 0.85 }
@@ -46,7 +48,7 @@ enum SystemStats {
 
         var level: Int32 = 1
         var size = MemoryLayout<Int32>.size
-        sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0)
+        let pressureOK = sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0) == 0
 
         let volume = try? URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: [
             .volumeAvailableCapacityForImportantUsageKey, .volumeTotalCapacityKey,
@@ -58,7 +60,9 @@ enum SystemStats {
             pressure: MemoryPressure(rawValue: Int(level)) ?? .normal,
             diskFree: volume?.volumeAvailableCapacityForImportantUsage ?? 0,
             diskTotal: Int64(volume?.volumeTotalCapacity ?? 0),
-            memCache: status == KERN_SUCCESS ? (Int64(stats.external_page_count) + Int64(stats.purgeable_count)) * Int64(vm_kernel_page_size) : nil
+            memCache: status == KERN_SUCCESS ? (Int64(stats.external_page_count) + Int64(stats.purgeable_count)) * Int64(vm_kernel_page_size) : nil,
+            memoryAvailable: status == KERN_SUCCESS,
+            pressureAvailable: pressureOK && MemoryPressure(rawValue: Int(level)) != nil
         )
     }
 }

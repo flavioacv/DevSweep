@@ -108,4 +108,78 @@ final class AppUninstallTests: XCTestCase {
         model.uninstallApplication = nil; await model.scan(force: true)
         XCTAssertEqual(model.report.entries.count, 1); XCTAssertNil(model.report.entries[0].association)
     }
+
+    func testJetBrainsSelectorDiscoversExactVersionAndSiblingGuardProtectsSharedSelector() throws {
+        func makeJetBrains(_ name: String, id: String, selector: String) throws -> URL {
+            let plist: [String: Any] = [
+                "CFBundleIdentifier": id,
+                "JVMOptions": ["Properties": ["idea.paths.selector": selector]]
+            ]
+            let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            try file("Applications/\(name).app/Contents/Info.plist", data: data)
+            return apps.appendingPathComponent(name + ".app")
+        }
+
+        let idea = try makeJetBrains("IntelliJ", id: "com.jetbrains.intellij", selector: "IntelliJIdea2025.2")
+        let cache = try file("Library/Caches/JetBrains/IntelliJIdea2025.2/index")
+        let logs = try file("Library/Logs/JetBrains/IntelliJIdea2025.2/idea.log")
+        let support = try file("Library/Application Support/JetBrains/IntelliJIdea2025.2/plugins")
+        try file("Library/Caches/JetBrains/IntelliJIdea2024.3/keep")
+
+        let report = plan(idea)
+        XCTAssertTrue(report.complete)
+        let paths = Set(report.entries.map(\.url))
+        XCTAssertTrue(paths.contains(cache.deletingLastPathComponent()))
+        XCTAssertTrue(paths.contains(logs.deletingLastPathComponent()))
+        XCTAssertTrue(paths.contains(support.deletingLastPathComponent()))
+        XCTAssertFalse(paths.contains { $0.path.contains("IntelliJIdea2024.3") })
+        let cacheEntry = try XCTUnwrap(report.entries.first { $0.url == cache.deletingLastPathComponent() })
+        XCTAssertTrue(cacheEntry.removable)
+        let context = try XCTUnwrap(cacheEntry.target.appRemovalContext)
+        XCTAssertTrue(context.validates())
+
+        // A sibling app with a different bundle ID sharing the same selector protects shared data.
+        _ = try makeJetBrains("IntelliJCE", id: "com.jetbrains.intellij.ce", selector: "IntelliJIdea2025.2")
+        XCTAssertFalse(context.validates())
+        let shared = plan(idea)
+        XCTAssertTrue(shared.entries.filter { $0.association?.kind != .application }.allSatisfy { !$0.removable })
+
+        // Malformed selectors are rejected.
+        let bad = try makeJetBrains("BadJB", id: "com.jetbrains.bad", selector: "../escape")
+        XCTAssertNil(AppUninstall.jetbrainsSelector(bad))
+    }
+
+    func testFrameworkLeavesUUIDContainersAndCriticalDataHoldbacks() throws {
+        let app = try application()
+        let shipIt = try file("Library/Caches/\(id).ShipIt/update")
+        let http = try file("Library/HTTPStorages/\(id)/httpstorages.sqlite")
+        let webkit = try file("Library/WebKit/\(id)/WebsiteData")
+
+        let matchingUUID = UUID().uuidString
+        let otherUUID = UUID().uuidString
+        let matchingMeta = try PropertyListSerialization.data(fromPropertyList: ["MCMMetadataIdentifier": id], format: .xml, options: 0)
+        let otherMeta = try PropertyListSerialization.data(fromPropertyList: ["MCMMetadataIdentifier": "org.example.Other"], format: .xml, options: 0)
+        try file("Library/Containers/\(matchingUUID)/.com.apple.containermanagerd.metadata.plist", data: matchingMeta)
+        try file("Library/Containers/\(otherUUID)/.com.apple.containermanagerd.metadata.plist", data: otherMeta)
+
+        let report = plan(app)
+        let urls = Set(report.entries.map(\.url))
+        XCTAssertTrue(urls.contains(shipIt.deletingLastPathComponent()))
+        XCTAssertTrue(urls.contains(http.deletingLastPathComponent()))
+        XCTAssertTrue(urls.contains(webkit.deletingLastPathComponent()))
+        let uuidContainer = home.appendingPathComponent("Library/Containers/\(matchingUUID)")
+        let uuidEntry = try XCTUnwrap(report.entries.first { $0.url == uuidContainer })
+        XCTAssertEqual(uuidEntry.association?.kind, .container)
+        XCTAssertFalse(uuidEntry.removable)
+        XCTAssertFalse(urls.contains { $0.lastPathComponent == otherUUID })
+
+        // Critical data holdbacks remain read-only even for sole owners.
+        let steam = try application("Steam", identifier: "com.valvesoftware.steam")
+        let steamSupport = try file("Library/Application Support/com.valvesoftware.steam/data")
+        let steamReport = plan(steam)
+        let steamEntry = try XCTUnwrap(steamReport.entries.first { $0.url == steamSupport.deletingLastPathComponent() })
+        XCTAssertFalse(steamEntry.removable)
+        XCTAssertTrue(AppUninstall.isProtectedDataRoot(home.appendingPathComponent("Library/Application Support/Steam"), bundleID: "com.valvesoftware.steam", kind: .support))
+        XCTAssertTrue(AppUninstall.isProtectedDataRoot(home.appendingPathComponent("Library/Application Support/VirtualBuddy"), bundleID: "codes.rambo.VirtualBuddy", kind: .support))
+    }
 }

@@ -28,35 +28,104 @@ struct AppRemovalContext: Sendable {
     let bundleID: String
     let infoGrant: PathAuthorization
     let inventoryRoots: [URL]
+    var jetbrainsSelector: String? = nil
     var relatedData = true
 
     func validates() -> Bool {
         guard infoGrant.validates(application.appendingPathComponent("Contents/Info.plist")),
-              AppUninstall.identifier(application) == bundleID else { return false }
+              AppUninstall.identifier(application) == bundleID,
+              AppUninstall.jetbrainsSelector(application) == jetbrainsSelector else { return false }
         if !relatedData { return true }
         let inventory = AppUninstall.inventory(roots: inventoryRoots, control: ScanControl())
-        return inventory.complete && inventory.apps.filter { $0.value.lowercased() == bundleID.lowercased() }.map(\.key) == [application.path]
+        return AppUninstall.isSoleOwner(application: application, bundleID: bundleID, jetbrainsSelector: jetbrainsSelector, inventory: inventory)
     }
 }
 
 enum AppUninstall {
     struct Inventory {
         var apps: [String: String] = [:]
+        var selectors: [String: String] = [:]
         var issues: [String] = []
         var complete = true
     }
 
-    static func identifier(_ application: URL) -> String? {
+    private static let protectedSupportFolders: Set<String> = [
+        "steam", "crossover", "openemu", "dolphin", "retroarch", "prismlauncher", "minecraft", "virtualbuddy"
+    ]
+    private static let protectedBundleIDs: Set<String> = [
+        "com.valvesoftware.steam", "com.utmapp.utm"
+    ]
+
+    static func isProtectedDataRoot(_ url: URL, bundleID: String, kind: AppFileKind) -> Bool {
+        if kind == .container { return true }
+        if kind == .support {
+            let folder = url.lastPathComponent.lowercased()
+            if protectedSupportFolders.contains(folder) || protectedBundleIDs.contains(bundleID.lowercased()) {
+                return true
+            }
+        }
+        return false
+    }
+
+    static func infoPlist(_ application: URL) -> [String: Any]? {
         let info = application.appendingPathComponent("Contents/Info.plist")
         guard FileIdentity.read(info) != nil,
               let attrs = try? FileManager.default.attributesOfItem(atPath: info.path),
               (attrs[.size] as? NSNumber)?.intValue ?? Int.max < 2_000_000,
               let data = try? Data(contentsOf: info),
-              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return nil }
+        return plist
+    }
+
+    static func identifier(_ application: URL) -> String? {
+        guard let plist = infoPlist(application),
               let id = plist["CFBundleIdentifier"] as? String,
               id.count <= 200, id.contains("."), !id.contains(".."), !id.hasPrefix("."), !id.hasSuffix("."),
               id.unicodeScalars.allSatisfy({ CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-").contains($0) }) else { return nil }
         return id
+    }
+
+    /// Reads `JVMOptions.Properties["idea.paths.selector"]` for JetBrains / Android Studio bundles.
+    static func jetbrainsSelector(_ application: URL) -> String? {
+        guard let plist = infoPlist(application),
+              let jvm = plist["JVMOptions"] as? [String: Any],
+              let props = jvm["Properties"] as? [String: Any],
+              let selector = props["idea.paths.selector"] as? String,
+              !selector.isEmpty, selector.count <= 80, !selector.contains(".."), !selector.hasPrefix("."),
+              selector.unicodeScalars.allSatisfy({ CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-").contains($0) }) else { return nil }
+        return selector
+    }
+
+    static func isSoleOwner(application: URL, bundleID: String, jetbrainsSelector: String?, inventory: Inventory) -> Bool {
+        guard inventory.complete else { return false }
+        let sameID = inventory.apps.filter { $0.value.lowercased() == bundleID.lowercased() }.map(\.key)
+        guard sameID == [application.path] else { return false }
+        if let selector = jetbrainsSelector?.lowercased() {
+            let sameSelector = inventory.selectors.filter { $0.value.lowercased() == selector }.map(\.key)
+            guard sameSelector == [application.path] else { return false }
+        }
+        return true
+    }
+
+    static func matchingUUIDContainers(bundleID: String, home: URL, control: ScanControl) -> [URL] {
+        let containers = home.appendingPathComponent("Library/Containers")
+        guard let items = try? FileManager.default.contentsOfDirectory(at: containers, includingPropertiesForKeys: nil) else { return [] }
+        var matched: [URL] = []
+        for item in items {
+            if control.isCancelled { break }
+            guard UUID(uuidString: item.lastPathComponent) != nil,
+                  FileIdentity.read(item) != nil else { continue }
+            let meta = item.appendingPathComponent(".com.apple.containermanagerd.metadata.plist")
+            guard FileIdentity.read(meta) != nil,
+                  let attrs = try? FileManager.default.attributesOfItem(atPath: meta.path),
+                  (attrs[.size] as? NSNumber)?.intValue ?? Int.max < 65_536,
+                  let data = try? Data(contentsOf: meta),
+                  let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+                  let metaID = plist["MCMMetadataIdentifier"] as? String,
+                  metaID.lowercased() == bundleID.lowercased() else { continue }
+            matched.append(URL(fileURLWithPath: item.standardizedFileURL.path))
+        }
+        return matched.sorted { $0.path < $1.path }
     }
 
     static func inventory(roots: [URL], control: ScanControl) -> Inventory {
@@ -72,6 +141,7 @@ enum AppUninstall {
             for app in walk.directories where app.pathExtension.lowercased() == "app" {
                 guard let id = identifier(app) else { result.complete = false; result.issues.append(app.path); continue }
                 result.apps[app.path] = id
+                if let selector = jetbrainsSelector(app) { result.selectors[app.path] = selector }
             }
         }
         return result
@@ -82,20 +152,35 @@ enum AppUninstall {
               let grant = PathAuthorization.issue(application.appendingPathComponent("Contents/Info.plist"), within: application) else {
             return GeneralReport(issues: [tr("uninstall.unverified")], complete: false)
         }
+        let selector = jetbrainsSelector(application)
         let roots = roots ?? [URL(fileURLWithPath: "/Applications"), URL(fileURLWithPath: "/System/Applications"), home.appendingPathComponent("Applications"), application.deletingLastPathComponent()]
         let installed = inventory(roots: roots, control: control)
-        let soleOwner = installed.complete && installed.apps.filter { $0.value.lowercased() == id.lowercased() }.map(\.key) == [application.path]
-        let context = AppRemovalContext(application: application, bundleID: id, infoGrant: grant, inventoryRoots: roots)
+        let soleOwner = isSoleOwner(application: application, bundleID: id, jetbrainsSelector: selector, inventory: installed)
+        let context = AppRemovalContext(application: application, bundleID: id, infoGrant: grant, inventoryRoots: roots, jetbrainsSelector: selector)
         var report = GeneralReport(issues: installed.issues, complete: installed.complete)
         if !soleOwner { report.issues.append(tr("uninstall.shared")) }
         var app = GeneralScanner.entry(application, root: application.deletingLastPathComponent(), area: .applications, home: home).target
         app.requiresAppsClosed = [id]
         var appContext = context; appContext.relatedData = false; app.appRemovalContext = appContext
         report.entries = [GeneralEntry(target: app, modified: PathGlob.modificationDate(application), association: AppAssociation(bundleID: id, kind: .application))]
-        let locations: [(String, AppFileKind)] = [
-            ("Caches/" + id, .cache), ("Logs/" + id, .logs), ("Saved Application State/" + id + ".savedState", .savedState),
-            ("Preferences/" + id + ".plist", .preferences), ("Application Support/" + id, .support), ("Containers/" + id, .container)
+        var locations: [(String, AppFileKind)] = [
+            ("Caches/" + id, .cache),
+            ("Caches/" + id + ".ShipIt", .cache),
+            ("HTTPStorages/" + id, .cache),
+            ("WebKit/" + id, .cache),
+            ("Logs/" + id, .logs),
+            ("Saved Application State/" + id + ".savedState", .savedState),
+            ("Preferences/" + id + ".plist", .preferences),
+            ("Application Support/" + id, .support),
+            ("Containers/" + id, .container)
         ]
+        if let selector, (id.lowercased().hasPrefix("com.jetbrains.") || id.lowercased().hasPrefix("com.google.android.studio")) {
+            locations += [
+                ("Caches/JetBrains/" + selector, .cache),
+                ("Logs/JetBrains/" + selector, .logs),
+                ("Application Support/JetBrains/" + selector, .support)
+            ]
+        }
         for (relative, kind) in locations {
             if control.isCancelled { report.complete = false; report.issues.append(tr("general.cancelled")); break }
             let file = home.appendingPathComponent("Library/" + relative)
@@ -108,8 +193,15 @@ enum AppUninstall {
             var target = GeneralScanner.entry(file, root: home.appendingPathComponent("Library"), area: .applications, home: home).target
             target.requiresAppsClosed = [id]; target.appRemovalContext = context
             if kind == .preferences { target.pathRules[file.path] = PathSpec(glob: file.path, filesOnly: true) }
-            if !soleOwner || kind == .container { target.pathAuthorizations = [:] }
+            if !soleOwner || isProtectedDataRoot(file, bundleID: id, kind: kind) { target.pathAuthorizations = [:] }
             report.entries.append(GeneralEntry(target: target, modified: PathGlob.modificationDate(file), association: AppAssociation(bundleID: id, kind: kind)))
+        }
+        for container in matchingUUIDContainers(bundleID: id, home: home, control: control) {
+            report.inspected += 1
+            var target = GeneralScanner.entry(container, root: home.appendingPathComponent("Library"), area: .applications, home: home).target
+            target.requiresAppsClosed = [id]; target.appRemovalContext = context
+            target.pathAuthorizations = [:]
+            report.entries.append(GeneralEntry(target: target, modified: PathGlob.modificationDate(container), association: AppAssociation(bundleID: id, kind: .container)))
         }
         let references = ConfigReferences.scan(home: home, application: application, bundleID: id, control: control)
         report.references = references.references; report.referencesComplete = references.complete; report.referenceIssues = references.issues

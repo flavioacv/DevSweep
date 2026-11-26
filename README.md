@@ -37,6 +37,9 @@ Open **General workspace** from the menu bar to use the larger window. The exist
 |---|---|
 | Logs | Discover logs older than 30 days in user Logs, application Logs and sandbox containers, without requiring an app-specific rule. |
 | Caches | Find recognizable cache directories and `CACHEDIR.TAG` folders. Unknown owners without a valid cache tag remain analysis-only; identified owners must be closed before removal. |
+| Old temporary files | Review regular `.tmp`/`.temp` files owned by the current user and modified over 7 days ago in the private user temporary directory. Open files are protected; selected files go to Trash. |
+| Review Trash | Read-only inventory of the account Trash, with Finder access and JSON export. Restore/manage items in Finder; this view does not empty Trash or permanently delete files. |
+| External metadata | On an explicitly selected writable local external volume/folder, review validated `.DS_Store` files and `.TemporaryItems` contents older than 7 days and owned by this user. AppleDouble files are excluded and preserved. Volume Trash, backups and indexing folders are excluded. |
 | Projects | Discover 34 artifact folder names across confirmed workspaces using project markers. Git-tracked content, nested repositories and open artifacts are protected. These are manual candidates, not a claim that every artifact is unused. |
 | Storage explorer | Browse folders/local external volumes or recursively find large files. Filter by allocated size, modification age and extension; sort by size, date or name; reveal in Finder and review selected items. |
 | Installers | Find macOS/mobile installer files and ZIPs with installer entries, inspecting a bounded central directory without extraction. |
@@ -49,6 +52,8 @@ The explorer's **Find large files** mode starts at 100 MB in the interface and s
 Cached results are checked against root and authorized-file identities off the main actor before reuse. Measurement updates are published in batches; missing or incomplete sizes have an explicit finished state instead of a perpetual spinner. Removed/replaced authorized files or roots invalidate the cache. Newly created files can still require **Refresh** within the 60-second cache lifetime.
 
 Searches support cancellation, bounded traversal and explicit partial results. Measurements that time out or fail are not reported as zero or eligible for removal. Results and monitoring snapshots can be exported as JSON. Folder scans do not follow symlinks or cross mounts and skip online-only cloud files.
+
+Temporary discovery is limited to 6 levels and the external metadata search to 12 levels; each uses a 50,000-entry/15-second budget. Reaching a limit or encountering access failures produces partial results and disables removal. External discovery requires a connected writable mount from the local volume inventory. Temporary cleanup does not target the shared `/tmp` tree, Downloads or arbitrary `.tmp` files elsewhere. AppleDouble may contain resource forks and is preserved. Moving a file to Trash on the same volume does not immediately increase that volume's free space.
 
 General removal always requires selection, review and confirmation, uses Trash and shares cleanup progress and history. Scanned files, parents and roots are revalidated by identity before removal; modified regular files are preserved. Protected home roots, shell configuration and credential paths cannot be removed from this window. These observations do not lock the filesystem against concurrent changes. Allocated sizes are estimates and can count shared APFS blocks more than once.
 

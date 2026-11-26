@@ -1,12 +1,15 @@
 import Foundation
 
 enum GeneralArea: String, CaseIterable, Identifiable, Sendable {
-    case logs, caches, projects, explorer, installers, applications, maintenance, monitor
+    case logs, caches, temporaries, trash, external, projects, explorer, installers, applications, maintenance, monitor
     var id: String { rawValue }
     var title: String {
         switch self {
         case .logs: tr("general.logs")
         case .caches: tr("general.caches")
+        case .temporaries: tr("hygiene.temporaries")
+        case .trash: tr("hygiene.trash")
+        case .external: tr("hygiene.external")
         case .projects: tr("general.projects")
         case .explorer: tr("general.explorer")
         case .installers: tr("general.installers")
@@ -19,6 +22,9 @@ enum GeneralArea: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .logs: "doc.text"
         case .caches: "shippingbox"
+        case .temporaries: "clock.arrow.circlepath"
+        case .trash: "trash"
+        case .external: "externaldrive"
         case .projects: "hammer"
         case .explorer: "internaldrive"
         case .installers: "shippingbox.and.arrow.backward"
@@ -63,6 +69,12 @@ enum GeneralScanner {
             }
         }
         switch area {
+        case .temporaries:
+            return GeneralHygiene.temporaries(root: URL(fileURLWithPath: NSTemporaryDirectory()), home: home, control: control)
+        case .trash:
+            return GeneralHygiene.trash(home: home, control: control)
+        case .external:
+            return GeneralHygiene.external(root: selectedRoot, home: home, volumes: SystemMonitor.volumes(), control: control)
         case .logs:
             var roots = selectedRoot.map { [$0] } ?? [library.appendingPathComponent("Logs")]
             let support = library.appendingPathComponent("Application Support")

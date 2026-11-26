@@ -135,6 +135,7 @@ struct StorageDefinition: Decodable, Sendable {
     let run: [[String]]?
     let thenDelete: Bool?
     let stopProcesses: [String]?
+    let requiresAppsClosed: [String]?
     let autoSuggest: Bool?
     let suggestAbove: ByteSize?
     let requiresPath: String?
@@ -145,6 +146,7 @@ struct StorageDefinition: Decodable, Sendable {
         case providerOptions = "provider_options"
         case thenDelete = "then_delete"
         case stopProcesses = "stop_processes"
+        case requiresAppsClosed = "requires_apps_closed"
         case autoSuggest = "auto_suggest"
         case suggestAbove = "suggest_above"
         case requiresPath = "requires_path"
@@ -157,6 +159,7 @@ struct PathSpec: Decodable, Sendable {
     let exclude: [String]?
     let nameMatches: String?
     let olderThanDays: Int?
+    let filesOnly: Bool?
     let keepNewest: Int?
     let onlyNewest: Int?
     let sortBy: String?
@@ -168,6 +171,7 @@ struct PathSpec: Decodable, Sendable {
         case glob, exclude
         case nameMatches = "name_matches"
         case olderThanDays = "older_than_days"
+        case filesOnly = "files_only"
         case keepNewest = "keep_newest"
         case onlyNewest = "only_newest"
         case sortBy = "sort_by"
@@ -181,6 +185,7 @@ struct PathSpec: Decodable, Sendable {
         self.exclude = nil
         self.nameMatches = nil
         self.olderThanDays = nil
+        self.filesOnly = nil
         self.keepNewest = keepNewest
         self.onlyNewest = onlyNewest
         self.sortBy = sortBy
@@ -195,6 +200,7 @@ struct PathSpec: Decodable, Sendable {
             exclude = nil
             nameMatches = nil
             olderThanDays = nil
+            filesOnly = nil
             keepNewest = nil
             onlyNewest = nil
             sortBy = nil
@@ -208,6 +214,7 @@ struct PathSpec: Decodable, Sendable {
         exclude = try container.decodeIfPresent([String].self, forKey: .exclude)
         nameMatches = try container.decodeIfPresent(String.self, forKey: .nameMatches)
         olderThanDays = try container.decodeIfPresent(Int.self, forKey: .olderThanDays)
+        filesOnly = try container.decodeIfPresent(Bool.self, forKey: .filesOnly)
         keepNewest = try container.decodeIfPresent(Int.self, forKey: .keepNewest)
         onlyNewest = try container.decodeIfPresent(Int.self, forKey: .onlyNewest)
         sortBy = try container.decodeIfPresent(String.self, forKey: .sortBy)

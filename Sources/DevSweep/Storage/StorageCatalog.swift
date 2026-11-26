@@ -31,7 +31,15 @@ enum StorageCatalog {
                 continue
             }
 
-            var paths = (definition.paths ?? []).flatMap { PathResolver.resolve($0) }
+            var paths: [URL] = []
+            var pathRules: [String: PathSpec] = [:]
+            for rule in definition.paths ?? [] {
+                let found = PathResolver.resolve(rule)
+                paths += found
+                if rule.olderThanDays != nil || rule.filesOnly == true {
+                    for path in found { pathRules[path.path] = rule }
+                }
+            }
             var authorizedProjectPaths: [URL] = []
             var projectRootsByPath: [String: URL] = [:]
             if let project = definition.project {
@@ -61,6 +69,7 @@ enum StorageCatalog {
             var target = makeTarget(spec, vars: vars, paths: paths, result: nil)
             target.authorizedProjectPaths = authorizedProjectPaths
             target.projectRootsByPath = projectRootsByPath
+            target.pathRules = pathRules
             targets.append(target)
         }
         return targets.filter { !$0.paths.isEmpty }
@@ -78,7 +87,8 @@ enum StorageCatalog {
             method: result?.method ?? spec.method,
             stopProcesses: (definition.stopProcesses ?? []) + (result?.stopProcesses ?? []),
             autoRecommend: (definition.autoSuggest ?? true) && (result?.autoSuggest ?? true),
-            recommendMinBytes: definition.suggestAbove?.bytes
+            recommendMinBytes: definition.suggestAbove?.bytes,
+            requiresAppsClosed: definition.requiresAppsClosed ?? []
         )
     }
 

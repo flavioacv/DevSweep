@@ -120,6 +120,7 @@ match:
 | `method` | `delete` (default), `trash` or `run`. |
 | `run` | Commands for `method: run` (implied when `run` is present): a list of `[command, args…]`. Paths are still used to measure size. |
 | `then_delete` | With `run`: also delete the paths afterwards. |
+| `requires_apps_closed` | Explicit bundle identifiers that must be absent, including helpers. Preview and execution preserve the target when process identity or open-file checks are uncertain. Cannot be combined with `run` or non-empty `stop_processes`; the cleaner never quits these apps for you. |
 | `stop_processes` | Substrings of command lines to terminate before cleaning (daemons holding the files). |
 | `auto_suggest` | `false`: only shown in the Storage tab, never suggested proactively. Default `true`. |
 | `suggest_above` | Size that triggers a suggestion, like `500MB` or `2GB`. Defaults to the user's setting. |
@@ -127,6 +128,12 @@ match:
 | `disabled` | Remove the entry. |
 
 At least one of `paths`, `project` or `provider` is required.
+
+App-cache rules should target disposable subdirectories, never whole profiles or application data
+roots. Keep them manual (`auto_suggest: false`) until their scope is verified. Historical logs are
+not regenerated: use `data_loss`, `method: trash`, a positive age filter and `files_only: true`.
+Age and file-type conditions are rechecked before removal, along with open handles and linked
+ancestors. Changing a filtered target through path selection must retain these conditions.
 
 #### Path specs
 
@@ -141,6 +148,7 @@ The object form adds filters:
 | `glob` | Required. |
 | `exclude` | File names to leave out. |
 | `name_matches` | Regular expression the file name must match. |
+| `files_only` | `true`: regular files only, excluding directories and symbolic links. |
 | `older_than_days` | Only items not modified for N days. |
 | `keep_newest` | Leave the N newest out (clean the old ones). |
 | `only_newest` | Select only the N newest. |

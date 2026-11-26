@@ -67,6 +67,12 @@ struct StorageTarget: Identifiable, Sendable {
     var authorizedProjectPaths: [URL] = []
     /// Project ownership for the review UI; unrelated global paths have no entry.
     var projectRootsByPath: [String: URL] = [:]
+    /// Bundle identifiers whose main app and helpers must be absent before cleaning.
+    var requiresAppsClosed: [String] = []
+    /// Scan-time filters that must still hold immediately before execution.
+    var pathRules: [String: PathSpec] = [:]
+
+    var needsUsageCheck: Bool { !requiresAppsClosed.isEmpty || !pathRules.isEmpty || !projectRootsByPath.isEmpty }
 
     func selecting(paths selected: Set<URL>) -> StorageTarget? {
         guard method.supportsPathSelection else { return nil }
@@ -80,7 +86,9 @@ struct StorageTarget: Identifiable, Sendable {
                       method: method, stopProcesses: stopProcesses, autoRecommend: autoRecommend,
                       recommendMinBytes: recommendMinBytes,
                       authorizedProjectPaths: authorizedProjectPaths.filter { paths.contains($0) },
-                      projectRootsByPath: projectRootsByPath.filter { pair in paths.contains { $0.path == pair.key } })
+                      projectRootsByPath: projectRootsByPath.filter { pair in paths.contains { $0.path == pair.key } },
+                      requiresAppsClosed: requiresAppsClosed,
+                      pathRules: pathRules.filter { pair in paths.contains { $0.path == pair.key } })
     }
 
     var cleanupUnits: [StorageTarget] {
@@ -102,4 +110,9 @@ struct CleanupSummary: Sendable {
     var freed: Int64
     var errors: [String]
     var cancelled: Bool
+}
+
+/// Shared by review and execution; an uncertain check never authorizes removal.
+enum CleanupGuardVerdict: Equatable, Sendable {
+    case allowed, inUse, tracked, recent, unverified
 }

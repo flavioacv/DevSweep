@@ -1,0 +1,123 @@
+# User-scoped Mac cleanup. Never select entire browser or application profiles.
+# Cache layout: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md
+# Electron cache folders: https://www.electronjs.org/docs/latest/api/app/
+stack:
+  id: mac
+  name: Mac
+  icon: desktopcomputer
+  order: 900
+
+storage:
+  - id: mac-chrome-cache
+    name:
+      en: Google Chrome disk cache
+      pt-BR: Cache de disco do Google Chrome
+      es: Caché de disco de Google Chrome
+    description:
+      en: "Cached web resources from standard profiles. Close Chrome first. Pages download resources again; cookies, passwords and history are kept."
+      pt-BR: "Recursos web em cache dos perfis padrão. Feche o Chrome antes. As páginas baixam os recursos novamente; cookies, senhas e histórico são preservados."
+      es: "Recursos web en caché de perfiles estándar. Cierra Chrome primero. Las páginas descargan los recursos otra vez; se conservan cookies, contraseñas e historial."
+    risk: redownload
+    auto_suggest: false
+    requires_apps_closed: [com.google.Chrome, com.google.Chrome.beta, com.google.Chrome.dev, com.google.Chrome.canary]
+    paths:
+      - ~/Library/Caches/Google/Chrome/{Default,Profile *,Guest Profile}/Cache
+
+  - id: mac-chromium-cache
+    name:
+      en: Chromium disk cache
+      pt-BR: Cache de disco do Chromium
+      es: Caché de disco de Chromium
+    description:
+      en: "Cached web resources from standard profiles. Close Chromium first. Profile data is kept; resources download again."
+      pt-BR: "Recursos web em cache dos perfis padrão. Feche o Chromium antes. Os dados dos perfis são preservados; os recursos serão baixados novamente."
+      es: "Recursos web en caché de perfiles estándar. Cierra Chromium primero. Se conservan los datos de los perfiles; los recursos se descargan otra vez."
+    risk: redownload
+    auto_suggest: false
+    requires_apps_closed: [org.chromium.Chromium]
+    paths:
+      - ~/Library/Caches/Chromium/{Default,Profile *,Guest Profile}/Cache
+
+  - id: mac-edge-cache
+    name:
+      en: Microsoft Edge disk cache
+      pt-BR: Cache de disco do Microsoft Edge
+      es: Caché de disco de Microsoft Edge
+    description:
+      en: "Cached web resources from standard profiles. Close Edge first. Profile data is kept; resources download again."
+      pt-BR: "Recursos web em cache dos perfis padrão. Feche o Edge antes. Os dados dos perfis são preservados; os recursos serão baixados novamente."
+      es: "Recursos web en caché de perfiles estándar. Cierra Edge primero. Se conservan los datos de los perfiles; los recursos se descargan otra vez."
+    risk: redownload
+    auto_suggest: false
+    requires_apps_closed: [com.microsoft.edgemac, com.microsoft.edgemac.Beta, com.microsoft.edgemac.Dev, com.microsoft.edgemac.Canary]
+    paths:
+      - ~/Library/Caches/Microsoft Edge/{Default,Profile *,Guest Profile}/Cache
+
+  - id: mac-brave-cache
+    name:
+      en: Brave disk cache
+      pt-BR: Cache de disco do Brave
+      es: Caché de disco de Brave
+    description:
+      en: "Cached web resources from standard profiles. Close Brave first. Profile data is kept; resources download again."
+      pt-BR: "Recursos web em cache dos perfis padrão. Feche o Brave antes. Os dados dos perfis são preservados; os recursos serão baixados novamente."
+      es: "Recursos web en caché de perfiles estándar. Cierra Brave primero. Se conservan los datos de los perfiles; los recursos se descargan otra vez."
+    risk: redownload
+    auto_suggest: false
+    requires_apps_closed: [com.brave.Browser, com.brave.Browser.beta, com.brave.Browser.nightly]
+    paths:
+      - ~/Library/Caches/BraveSoftware/Brave-Browser/{Default,Profile *,Guest Profile}/Cache
+
+  - id: mac-slack-cache
+    name:
+      en: Slack web and rendering caches
+      pt-BR: Caches web e de renderização do Slack
+      es: Cachés web y de renderizado de Slack
+    description:
+      en: "Close Slack first. Only Cache, Code Cache and GPUCache are removed. Sessions, local storage and workspaces are kept; resources download again."
+      pt-BR: "Feche o Slack antes. Remove apenas Cache, Code Cache e GPUCache. Sessões, armazenamento local e espaços de trabalho são preservados; os recursos serão baixados novamente."
+      es: "Cierra Slack primero. Solo elimina Cache, Code Cache y GPUCache. Se conservan sesiones, almacenamiento local y espacios de trabajo; los recursos se descargan otra vez."
+    risk: redownload
+    auto_suggest: false
+    requires_apps_closed: [com.tinyspeck.slackmacgap]
+    paths:
+      - ~/Library/Application Support/Slack/{Cache,Code Cache,GPUCache}
+      - ~/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application Support/Slack/{Cache,Code Cache,GPUCache}
+
+  - id: mac-slack-old-logs
+    name:
+      en: Slack logs older than 30 days
+      pt-BR: Logs do Slack com mais de 30 dias
+      es: Registros de Slack de más de 30 días
+    description:
+      en: "Moves old .log files to Trash after Slack closes. These are historical diagnostics: review before removing. Recent and open files are kept."
+      pt-BR: "Move arquivos .log antigos para a Lixeira após fechar o Slack. São diagnósticos históricos: revise antes de remover. Arquivos recentes e abertos são preservados."
+      es: "Mueve archivos .log antiguos a la Papelera después de cerrar Slack. Son diagnósticos históricos: revisa antes de eliminar. Se conservan archivos recientes y abiertos."
+    risk: data_loss
+    auto_suggest: false
+    method: trash
+    requires_apps_closed: [com.tinyspeck.slackmacgap]
+    paths:
+      - glob: ~/Library/Application Support/Slack/logs/*.log
+        files_only: true
+        older_than_days: 30
+      - glob: ~/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Application Support/Slack/logs/*.log
+        files_only: true
+        older_than_days: 30
+
+  - id: mac-old-crash-reports
+    name:
+      en: Crash reports older than 30 days
+      pt-BR: Relatórios de falhas com mais de 30 dias
+      es: Informes de fallos de más de 30 días
+    description:
+      en: "Moves old user .ips, .crash, .hang and .spin reports to Trash. Historical diagnostics are not regenerated: review before removing. Recent and open reports are kept."
+      pt-BR: "Move relatórios .ips, .crash, .hang e .spin antigos do usuário para a Lixeira. Os diagnósticos históricos não são regenerados: revise antes de remover. Relatórios recentes e abertos são preservados."
+      es: "Mueve informes .ips, .crash, .hang y .spin antiguos del usuario a la Papelera. Los diagnósticos históricos no se regeneran: revisa antes de eliminar. Se conservan informes recientes y abiertos."
+    risk: data_loss
+    auto_suggest: false
+    method: trash
+    paths:
+      - glob: ~/Library/Logs/DiagnosticReports/*.{ips,crash,hang,spin}
+        files_only: true
+        older_than_days: 30

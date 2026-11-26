@@ -26,7 +26,7 @@ struct StorageReviewView: View {
     let target: StorageTarget
     @State private var selected: Set<URL> = []
     @State private var measurements: [URL: SizeMeasurement] = [:]
-    @State private var verdicts: [URL: ProjectCleanupGuard.Verdict] = [:]
+    @State private var verdicts: [URL: CleanupGuardVerdict] = [:]
     @State private var search = ""
     @State private var measuring = true
 
@@ -133,11 +133,12 @@ struct StorageReviewView: View {
         .task { await measurePaths() }
     }
 
-    private func protectionLabel(_ verdict: ProjectCleanupGuard.Verdict) -> String {
+    private func protectionLabel(_ verdict: CleanupGuardVerdict) -> String {
         switch verdict {
         case .allowed: return ""
         case .inUse: return tr("review.in_use")
         case .tracked: return tr("review.tracked")
+        case .recent: return tr("review.recent")
         case .unverified: return tr("review.unverified")
         }
     }
@@ -145,16 +146,15 @@ struct StorageReviewView: View {
     private func measurePaths() async {
         let paths = Array(Set(target.paths)).sorted { $0.path < $1.path }
         // One read-only process snapshot per review; execution takes a fresh snapshot before deleting.
-        let handles: ShellResult? = target.projectRootsByPath.isEmpty ? nil : await Task.detached(priority: .utility) {
-            Shell.run("/usr/sbin/lsof", ["-nP", "-a", "-u", String(getuid()), "-Fpn"], timeout: 15)
-        }.value
-        let roots = target.projectRootsByPath
-        await withTaskGroup(of: (URL, SizeMeasurement, ProjectCleanupGuard.Verdict).self) { group in
+        let usage: ApplicationUsageSnapshot? = target.needsUsageCheck ? await Task.detached(priority: .utility) {
+            ApplicationUsageSnapshot.capture(includeApplications: !target.requiresAppsClosed.isEmpty)
+        }.value : nil
+        await withTaskGroup(of: (URL, SizeMeasurement, CleanupGuardVerdict).self) { group in
             var pending = paths[...]
             func enqueue(_ path: URL) {
                 group.addTask(priority: .utility) {
                     let measurement = SizeCalculator.measure([path])
-                    let verdict = roots[path.path].map { ProjectCleanupGuard.check(path, projectRoot: $0, handles: handles) } ?? .allowed
+                    let verdict = StorageSafety.check(path, target: target, usage: usage)
                     return (path, measurement, verdict)
                 }
             }

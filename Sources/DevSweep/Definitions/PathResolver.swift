@@ -36,6 +36,11 @@ enum PathResolver {
     static func resolve(_ spec: PathSpec, now: Date = Date()) -> [URL] {
         var urls = PathTemplate.expand(spec.glob).flatMap { PathGlob.expand($0, excluding: Set(spec.exclude ?? [])) }
 
+        if spec.filesOnly == true {
+            urls = urls.filter {
+                (try? FileManager.default.attributesOfItem(atPath: $0.path)[.type] as? FileAttributeType) == .typeRegular
+            }
+        }
         if let pattern = spec.nameMatches {
             urls = urls.filter { $0.lastPathComponent.range(of: pattern, options: .regularExpression) != nil }
         }

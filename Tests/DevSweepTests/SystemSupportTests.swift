@@ -88,6 +88,8 @@ final class PrefsTests: XCTestCase {
     }
 
     func testDefaultsAreRegistered() {
+        Prefs.defaults.removeObject(forKey: Prefs.Key.projectRoots)
+        Prefs.register()
         let snapshot = PrefsSnapshot.current()
         XCTAssertTrue(snapshot.notifications)
         XCTAssertEqual(snapshot.suggestStorageGB, 2)
@@ -96,7 +98,7 @@ final class PrefsTests: XCTestCase {
         XCTAssertEqual(snapshot.inactiveProjectDays, 21)
         XCTAssertEqual(snapshot.artifactAgeDays, 7)
         XCTAssertTrue(snapshot.artifactsToTrash)
-        XCTAssertFalse(snapshot.projectRoots.isEmpty)
+        XCTAssertEqual(snapshot.projectRoots, Prefs.defaultProjectRoots)
     }
 
     func testProjectRootsAreSplitAndTrimmed() {

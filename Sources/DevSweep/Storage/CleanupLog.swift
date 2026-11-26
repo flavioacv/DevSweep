@@ -13,6 +13,11 @@ enum CleanupLog {
         var method: String
         var paths: [String]
         var errors: [String]
+        var title: String? = nil
+        var freedBytes: Int64? = nil
+        var cancelled: Bool? = nil
+        var completedItems: Int? = nil
+        var totalItems: Int? = nil
     }
 
     static var directory: URL {

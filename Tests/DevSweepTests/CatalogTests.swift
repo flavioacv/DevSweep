@@ -48,6 +48,50 @@ final class CatalogTests: XCTestCase {
         )
     }
 
+    func testExternalProjectCleanupRequiresConfirmationAndKeepsProjectFiles() throws {
+        try makeProject("external-app", daysSinceActivity: 60)
+        let definitions = try write("""
+        stack: { id: test, name: Test }
+        storage:
+          - id: builds
+            name: Builds
+            risk: redownload
+            project:
+              markers: [marker.txt]
+              activity: inactive
+              paths: [build]
+        """)
+        var settings = prefs()
+        settings.workspacesConfirmed = false
+        let unconfirmed = try XCTUnwrap(StorageCatalog.build(prefs: settings, definitions: definitions).first)
+        XCTAssertTrue(unconfirmed.authorizedProjectPaths.isEmpty)
+
+        settings.workspacesConfirmed = true
+        let target = try XCTUnwrap(StorageCatalog.build(prefs: settings, definitions: definitions).first)
+        let artifact = try XCTUnwrap(target.paths.first)
+        let project = artifact.deletingLastPathComponent()
+        XCTAssertFalse(SafeDelete.isAllowed(artifact))
+        XCTAssertTrue(SafeDelete.isAllowed(artifact, authorizedProjectPaths: target.authorizedProjectPaths))
+        XCTAssertFalse(SafeDelete.isAllowed(project, authorizedProjectPaths: target.authorizedProjectPaths))
+        XCTAssertFalse(SafeDelete.isAllowed(project.appendingPathComponent("marker.txt"),
+                                          authorizedProjectPaths: target.authorizedProjectPaths))
+        XCTAssertEqual(Cleaner.clean(target), [])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: artifact.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: project.appendingPathComponent("marker.txt").path))
+    }
+
+    func testExternalArtifactReplacedWithSymlinkIsBlocked() throws {
+        let project = root.appendingPathComponent("external-app").resolvingSymlinksInPath()
+        let artifact = project.appendingPathComponent("build")
+        let unrelated = root.appendingPathComponent("unrelated").resolvingSymlinksInPath()
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: unrelated, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: artifact, withDestinationURL: unrelated)
+        XCTAssertFalse(SafeDelete.isAllowed(artifact, authorizedProjectPaths: [artifact]))
+        XCTAssertNotNil(SafeDelete.remove(artifact, authorizedProjectPaths: [artifact]))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unrelated.path))
+    }
+
     func testProjectEntriesPickTheRightProjectsAndRenderPlaceholders() throws {
         try makeProject("old-app", daysSinceActivity: 60)
         try makeProject("fresh-app", daysSinceActivity: 1)

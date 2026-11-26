@@ -119,6 +119,21 @@ final class CleanupLogTests: XCTestCase {
         CleanupLog.Entry(date: Date(), item: item, risk: "redownload", method: "delete", paths: paths, errors: errors)
     }
 
+    func testLegacyEntriesRemainReadableAlongsideSessionSummaries() throws {
+        let legacy = "{\"date\":\"2026-01-01T00:00:00Z\",\"item\":\"old-cache\",\"risk\":\"safe\",\"method\":\"delete\",\"paths\":[],\"errors\":[]}\n"
+        try legacy.write(to: CleanupLog.fileURL(in: directory), atomically: true, encoding: .utf8)
+        let session = CleanupLog.Entry(date: Date(), item: "cleanup-session", risk: "", method: "session", paths: [],
+                                       errors: [], freedBytes: 1024, cancelled: true, completedItems: 1, totalItems: 3)
+        CleanupLog.record(session, in: directory)
+        let entries = CleanupLog.read(in: directory)
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertNil(entries[0].freedBytes)
+        XCTAssertEqual(entries[1].freedBytes, 1024)
+        XCTAssertEqual(entries[1].cancelled, true)
+        XCTAssertEqual(entries[1].completedItems, 1)
+        XCTAssertEqual(entries[1].totalItems, 3)
+    }
+
     func testEntriesAppendAndReadBack() {
         CleanupLog.record(entry("pub-cache", paths: ["/p/hosted/http-1.2.0"]), in: directory)
         CleanupLog.record(entry("cocoapods-cache", errors: ["boom"]), in: directory)

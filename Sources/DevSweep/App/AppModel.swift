@@ -11,6 +11,11 @@ final class AppModel: ObservableObject {
     @Published private(set) var targets: [StorageTarget] = []
     /// Measured size per target id; missing means "still measuring".
     @Published private(set) var sizes: [String: Int64] = [:]
+    @Published private(set) var storageMeasurements: [String: SizeMeasurement] = [:]
+    @Published private(set) var cleanupProgress: CleanupProgress?
+    @Published private(set) var cleanupCancellationRequested = false
+    @Published private(set) var cleanupSummary: CleanupSummary?
+    @Published private(set) var cleanupHistory: [CleanupLog.Entry] = []
     @Published private(set) var recommendations: [Recommendation] = []
     @Published private(set) var isScanningStorage = false
     @Published private(set) var isScanningProcesses = false
@@ -41,7 +46,10 @@ final class AppModel: ObservableObject {
             let stale = model.lastStorageScan.map { Date().timeIntervalSince($0) > hours * 3600 } ?? true
             if stale { Task { await model.scanStorage() } }
         }
-        Task { await reloadEverything() }
+        Task {
+            await loadCleanupHistory()
+            await reloadEverything()
+        }
     }
 
     private func schedule(every interval: TimeInterval, _ action: @escaping @MainActor (AppModel) -> Void) {
@@ -118,7 +126,7 @@ final class AppModel: ObservableObject {
     }
 
     func scanStorage(remeasure: Bool = true) async {
-        guard !isScanningStorage else { return }
+        guard !isScanningStorage, cleanupProgress == nil else { return }
         isScanningStorage = true
         let prefs = PrefsSnapshot.current()
         let definitions = definitions
@@ -128,20 +136,22 @@ final class AppModel: ObservableObject {
         targets = catalog
         let ids = Set(catalog.map(\.id))
         sizes = sizes.filter { ids.contains($0.key) }
+        storageMeasurements = storageMeasurements.filter { ids.contains($0.key) }
         let toMeasure = catalog.filter { remeasure || sizes[$0.id] == nil }
 
-        await withTaskGroup(of: (String, Int64).self) { group in
+        await withTaskGroup(of: (String, SizeMeasurement).self) { group in
             var pending = toMeasure[...]
             // du hammers the disk; a few at a time keeps the Mac responsive.
             for _ in 0..<4 {
                 guard let target = pending.popFirst() else { break }
-                group.addTask(priority: .utility) { (target.id, SizeCalculator.size(of: target.paths)) }
+                group.addTask(priority: .utility) { (target.id, SizeCalculator.measure(target.paths)) }
             }
             while let result = await group.next() {
-                sizes[result.0] = result.1
+                sizes[result.0] = result.1.bytes
+                storageMeasurements[result.0] = result.1
                 recompute()
                 if let target = pending.popFirst() {
-                    group.addTask(priority: .utility) { (target.id, SizeCalculator.size(of: target.paths)) }
+                    group.addTask(priority: .utility) { (target.id, SizeCalculator.measure(target.paths)) }
                 }
             }
         }
@@ -155,7 +165,8 @@ final class AppModel: ObservableObject {
 
     private func recompute() {
         recommendations = Advisor.build(
-            groups: groups, targets: targets, sizes: sizes, system: system, prefs: PrefsSnapshot.current()
+            groups: groups, targets: targets,
+            sizes: sizes.filter { storageMeasurements[$0.key]?.state == .complete }, system: system, prefs: PrefsSnapshot.current()
         )
     }
 
@@ -167,8 +178,9 @@ final class AppModel: ObservableObject {
         return false
     }
 
-    func clean(targetIDs: [String]) async {
-        let result = await cleanTargets(targetIDs)
+    func clean(targetIDs: [String], selectedPaths: Set<URL>? = nil) async {
+        guard !isPerformingAll else { showBanner(tr("cleanup.already_running")); return }
+        let result = await cleanTargets(targetIDs, selectedPaths: selectedPaths)
         showBanner(cleanMessage(freed: result.freed, errors: result.errors))
         refreshSystem()
     }
@@ -218,7 +230,7 @@ final class AppModel: ObservableObject {
     private func performBatch(_ batch: [Recommendation]) async {
         // Anything that loses user data needs an explicit per-item confirmation.
         let batch = batch.filter { $0.risk != .dataLoss }
-        guard !batch.isEmpty, !isPerformingAll else { return }
+        guard !batch.isEmpty, !isPerformingAll, cleanupProgress == nil else { return }
         isPerformingAll = true
         var killed = 0
         var ram: Int64 = 0
@@ -248,27 +260,75 @@ final class AppModel: ObservableObject {
         refreshSystem()
     }
 
-    private func cleanTargets(_ ids: [String]) async -> (freed: Int64, errors: [String]) {
-        let selected = targets.filter { ids.contains($0.id) && !busy.contains($0.id) }
+    func cancelCleanup() {
+        guard cleanupProgress != nil else { return }
+        cleanupCancellationRequested = true
+    }
+
+    func loadCleanupHistory() async {
+        cleanupHistory = await Task.detached(priority: .utility) { Array(CleanupLog.read().reversed()) }.value
+    }
+
+    private func cleanTargets(_ ids: [String], selectedPaths: Set<URL>? = nil) async -> (freed: Int64, errors: [String]) {
+        guard cleanupProgress == nil else { return (0, [tr("cleanup.already_running")]) }
+        guard !isScanningStorage else { return (0, [tr("cleanup.wait_for_scan")]) }
+        let selected = targets.filter { ids.contains($0.id) && !busy.contains($0.id) }.compactMap { target in
+            if let selectedPaths { return target.selecting(paths: selectedPaths) }
+            return target
+        }
+        let units = selected.flatMap(\.cleanupUnits)
+        guard !units.isEmpty else { return (0, []) }
         busy.formUnion(selected.map(\.id))
+        cleanupCancellationRequested = false
+        cleanupProgress = CleanupProgress(completed: 0, total: units.count, currentPath: "")
         var freed: Int64 = 0
         var errors: [String] = []
-        for target in selected {
-            let before = sizes[target.id] ?? 0
-            let (targetErrors, after) = await Task.detached(priority: .userInitiated) { () -> ([String], Int64) in
-                let errors = Cleaner.clean(target)
-                return (errors, SizeCalculator.size(of: target.paths))
+        var completed = 0
+        var changed = Set<String>()
+        for unit in units {
+            if cleanupCancellationRequested { break }
+            cleanupProgress = CleanupProgress(completed: completed, total: units.count,
+                                              currentPath: unit.paths.first?.path ?? unit.title)
+            let before = await Task.detached(priority: .utility) { SizeCalculator.measure(unit.paths) }.value
+            if cleanupCancellationRequested { break }
+            let (unitErrors, after) = await Task.detached(priority: .userInitiated) { () -> ([String], SizeMeasurement) in
+                let errors = Cleaner.clean(unit)
+                return (errors, SizeCalculator.measure(unit.paths))
             }.value
-            sizes[target.id] = after
-            freed += max(0, before - after)
-            errors += targetErrors
-            busy.remove(target.id)
-            recompute()
+            // A read failure is not proof that bytes were freed.
+            if before.state == .complete && after.state == .complete {
+                freed += max(0, before.bytes - after.bytes)
+            }
+            errors += unitErrors
+            completed += 1
+            changed.insert(unit.id)
+            cleanupProgress = CleanupProgress(completed: completed, total: units.count,
+                                              currentPath: unit.paths.first?.path ?? unit.title)
         }
+        // Refresh entire targets: a selected subset must not replace the category's total.
+        for target in targets where changed.contains(target.id) {
+            cleanupProgress = CleanupProgress(completed: completed, total: units.count,
+                                              currentPath: target.title, isRefreshing: true)
+            let measurement = await Task.detached(priority: .utility) { SizeCalculator.measure(target.paths) }.value
+            sizes[target.id] = measurement.bytes
+            storageMeasurements[target.id] = measurement
+        }
+        let cancelled = cleanupCancellationRequested && completed < units.count
+        cleanupSummary = CleanupSummary(completed: completed, total: units.count, freed: freed,
+                                        errors: errors, cancelled: cancelled)
+        let entry = CleanupLog.Entry(date: Date(), item: "cleanup-session", risk: "", method: "session",
+                                     paths: [], errors: errors, freedBytes: freed, cancelled: cancelled,
+                                     completedItems: completed, totalItems: units.count)
+        await Task.detached(priority: .utility) { CleanupLog.record(entry) }.value
+        await loadCleanupHistory()
+        busy.subtract(selected.map(\.id))
+        cleanupProgress = nil
+        cleanupCancellationRequested = false
         if freed > 0 {
             totalFreed += freed
             Prefs.defaults.set(Double(totalFreed), forKey: Prefs.Key.totalFreedBytes)
         }
+        recompute()
         return (freed, errors)
     }
 

@@ -33,6 +33,12 @@ enum CleanMethod: Sendable {
     /// Runs each command (first element is the tool) and optionally deletes the paths afterwards.
     case commands([[String]], thenDelete: Bool)
 
+    /// Commands may operate on an entire cache, so they cannot be split into per-path actions.
+    var supportsPathSelection: Bool {
+        if case .commands = self { return false }
+        return true
+    }
+
     /// Short, stable label for the cleanup log.
     var logDescription: String {
         switch self {
@@ -57,4 +63,43 @@ struct StorageTarget: Identifiable, Sendable {
     var autoRecommend: Bool = true
     /// Per-target suggestion threshold; falls back to the global preference.
     var recommendMinBytes: Int64? = nil
+    /// Exact generated artifacts authorized by confirmed project discovery, including external disks.
+    var authorizedProjectPaths: [URL] = []
+    /// Project ownership for the review UI; unrelated global paths have no entry.
+    var projectRootsByPath: [String: URL] = [:]
+
+    func selecting(paths selected: Set<URL>) -> StorageTarget? {
+        guard method.supportsPathSelection else { return nil }
+        let paths = paths.filter { selected.contains($0) }
+        guard !paths.isEmpty else { return nil }
+        return replacingPaths(paths)
+    }
+
+    func replacingPaths(_ paths: [URL]) -> StorageTarget {
+        StorageTarget(id: id, stack: stack, title: title, detail: detail, risk: risk, paths: paths,
+                      method: method, stopProcesses: stopProcesses, autoRecommend: autoRecommend,
+                      recommendMinBytes: recommendMinBytes,
+                      authorizedProjectPaths: authorizedProjectPaths.filter { paths.contains($0) },
+                      projectRootsByPath: projectRootsByPath.filter { pair in paths.contains { $0.path == pair.key } })
+    }
+
+    var cleanupUnits: [StorageTarget] {
+        guard method.supportsPathSelection else { return [self] }
+        return Array(Set(paths)).sorted { $0.path < $1.path }.map { replacingPaths([$0]) }
+    }
+}
+
+struct CleanupProgress: Sendable {
+    var completed: Int
+    var total: Int
+    var currentPath: String
+    var isRefreshing = false
+}
+
+struct CleanupSummary: Sendable {
+    var completed: Int
+    var total: Int
+    var freed: Int64
+    var errors: [String]
+    var cancelled: Bool
 }

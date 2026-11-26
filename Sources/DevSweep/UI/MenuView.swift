@@ -47,6 +47,7 @@ struct MenuView: View {
                 }
                 .frame(maxHeight: .infinity)
                 .animation(.easeInOut(duration: 0.2), value: model.banner)
+                CleanupStatusView()
                 Divider()
                 FooterView()
             }
@@ -140,7 +141,7 @@ private struct FooterView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(model.isPerformingAll)
+                .disabled(model.isPerformingAll || model.cleanupProgress != nil || model.isScanningStorage)
                 .help(tr("footer.clean_recommended_help"))
             }
             Button {

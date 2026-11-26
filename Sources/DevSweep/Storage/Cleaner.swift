@@ -1,21 +1,59 @@
 import Foundation
 
+struct SizeMeasurement: Sendable, Equatable {
+    enum State: Sendable { case complete, partial, unavailable }
+    var bytes: Int64
+    var state: State
+    var errors: [String] = []
+}
+
 enum SizeCalculator {
-    /// Allocated size on disk, via `du` (much faster than enumerating in Swift for large trees).
-    static func size(of paths: [URL]) -> Int64 {
-        let existing = paths.map(\.path).filter(PathGlob.exists)
-        guard !existing.isEmpty else { return 0 }
-        var total: Int64 = 0
-        for start in stride(from: 0, to: existing.count, by: 200) {
-            let chunk = Array(existing[start..<min(start + 200, existing.count)])
-            let result = Shell.run("/usr/bin/du", ["-sk"] + chunk, timeout: 900)
-            for line in result.stdout.split(separator: "\n") {
-                if let field = line.split(separator: "\t").first, let kb = Int64(field) {
-                    total += kb * 1024
+    /// Compatibility for callers that only need measured bytes.
+    static func size(of paths: [URL]) -> Int64 { measure(paths).bytes }
+
+    /// Allocated size on disk. Incomplete output must never masquerade as an empty folder.
+    static func measure(_ paths: [URL]) -> SizeMeasurement {
+        var existing: [String] = []
+        var results: [SizeMeasurement] = []
+        for path in Set(paths.map(\.path)).sorted() {
+            do {
+                _ = try FileManager.default.attributesOfItem(atPath: path)
+                existing.append(path)
+            } catch let error as NSError {
+                // Missing artifacts are empty; denied access is an unknown measurement.
+                if error.domain == NSCocoaErrorDomain && [NSFileNoSuchFileError, NSFileReadNoSuchFileError].contains(error.code) {
+                    continue
                 }
+                results.append(SizeMeasurement(bytes: 0, state: .unavailable,
+                                               errors: ["\(path): \(error.localizedDescription)"]))
             }
         }
-        return total
+        for start in stride(from: 0, to: existing.count, by: 200) {
+            let chunk = Array(existing[start..<min(start + 200, existing.count)])
+            results.append(parse(Shell.run("/usr/bin/du", ["-sk"] + chunk, timeout: 900), expectedPaths: chunk.count))
+        }
+        return combine(results)
+    }
+
+    static func parse(_ result: ShellResult, expectedPaths: Int) -> SizeMeasurement {
+        let values = result.stdout.split(separator: "\n").compactMap { line -> Int64? in
+            guard let field = line.split(separator: "\t", maxSplits: 1).first,
+                  let kb = Int64(field), kb >= 0, kb <= Int64.max / 1024 else { return nil }
+            return kb * 1024
+        }
+        let complete = result.status == 0 && values.count == expectedPaths
+        return SizeMeasurement(
+            bytes: values.reduce(0, +), state: complete ? .complete : values.isEmpty ? .unavailable : .partial,
+            errors: result.stderr.split(separator: "\n").map(String.init)
+        )
+    }
+
+    static func combine(_ measurements: [SizeMeasurement]) -> SizeMeasurement {
+        let complete = measurements.allSatisfy { $0.state == .complete }
+        let available = measurements.contains { $0.state != .unavailable }
+        return SizeMeasurement(bytes: measurements.reduce(0) { $0 + $1.bytes },
+                               state: complete ? .complete : available ? .partial : .unavailable,
+                               errors: measurements.flatMap(\.errors))
     }
 }
 
@@ -23,14 +61,24 @@ enum Cleaner {
     /// Cleans a target and returns human-readable errors (empty on success).
     static func clean(_ target: StorageTarget) -> [String] {
         var errors: [String] = []
-        if !target.stopProcesses.isEmpty {
+        let paths = target.paths.filter { path in
+            guard PathGlob.exists(path.path), let root = target.projectRootsByPath[path.path] else { return true }
+            switch ProjectCleanupGuard.check(path, projectRoot: root) {
+            case .allowed: return true
+            case .inUse: errors.append(tr("cleanup.protected_in_use", ["path": path.path]))
+            case .tracked: errors.append(tr("cleanup.protected_tracked", ["path": path.path]))
+            case .unverified: errors.append(tr("cleanup.protected_unknown", ["path": path.path]))
+            }
+            return false
+        }
+        if !paths.isEmpty && !target.stopProcesses.isEmpty {
             ProcessKiller.terminateMatching(target.stopProcesses)
         }
         switch target.method {
         case .delete:
-            errors += target.paths.compactMap(SafeDelete.remove)
+            errors += paths.compactMap { SafeDelete.remove($0, authorizedProjectPaths: target.authorizedProjectPaths) }
         case .trash:
-            for url in target.paths where PathGlob.exists(url.path) {
+            for url in paths where PathGlob.exists(url.path) {
                 do {
                     try FileManager.default.trashItem(at: url, resultingItemURL: nil)
                 } catch {
@@ -38,6 +86,8 @@ enum Cleaner {
                 }
             }
         case .commands(let commands, let thenDelete):
+            // A tool command may act on more than a single path: reject the whole action if any path failed.
+            guard paths.count == target.paths.count else { break }
             for command in commands {
                 let result = Shell.run(command[0], Array(command.dropFirst()), timeout: 900)
                 if result.status != 0 {
@@ -46,7 +96,7 @@ enum Cleaner {
                 }
             }
             if thenDelete {
-                errors += target.paths.compactMap(SafeDelete.remove)
+                errors += paths.compactMap { SafeDelete.remove($0, authorizedProjectPaths: target.authorizedProjectPaths) }
             }
         }
         CleanupLog.record(CleanupLog.Entry(
@@ -55,7 +105,7 @@ enum Cleaner {
             risk: target.risk.rawValue,
             method: target.method.logDescription,
             paths: target.paths.map(\.path),
-            errors: errors
+            errors: errors, title: target.title
         ))
         return errors
     }
@@ -78,11 +128,18 @@ enum SafeDelete {
         "Containers", "Group Containers", "Mobile Documents", "Mail", "Messages",
     ]
 
-    /// Last line of defense: only paths strictly inside the home folder, never the well-known roots themselves.
-    static func isAllowed(_ url: URL) -> Bool {
+    /// Home paths retain protected-root checks; external paths require exact project authorization.
+    static func isAllowed(_ url: URL, authorizedProjectPaths: [URL] = []) -> Bool {
         let path = url.standardizedFileURL.path
         let home = NSHomeDirectory()
-        guard path.hasPrefix(home + "/"), !path.contains("/../") else { return false }
+        guard path.hasPrefix(home + "/") else {
+            // Reject links (including linked ancestors) that now redirect a previously scanned artifact.
+            let resolved = url.resolvingSymlinksInPath().standardizedFileURL.path
+            return resolved == path && authorizedProjectPaths.contains {
+                $0.standardizedFileURL.path == path
+            }
+        }
+        guard !path.contains("/../") else { return false }
         let parts = path.dropFirst(home.count + 1).split(separator: "/").map(String.init)
         guard !parts.isEmpty else { return false }
         if parts.count == 1 && protectedTopLevel.contains(parts[0]) { return false }
@@ -91,9 +148,9 @@ enum SafeDelete {
         return true
     }
 
-    static func remove(_ url: URL) -> String? {
+    static func remove(_ url: URL, authorizedProjectPaths: [URL] = []) -> String? {
         guard PathGlob.exists(url.path) else { return nil }
-        guard isAllowed(url) else { return tr("error.blocked", ["path": url.path]) }
+        guard isAllowed(url, authorizedProjectPaths: authorizedProjectPaths) else { return tr("error.blocked", ["path": url.path]) }
         do {
             try FileManager.default.removeItem(at: url)
             return nil

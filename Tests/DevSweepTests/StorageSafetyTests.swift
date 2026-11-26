@@ -105,6 +105,93 @@ final class StorageSafetyTests: XCTestCase {
         XCTAssertFalse(target(appIDs: []).needsUsageCheck)
         XCTAssertEqual(StorageSafety.check(root.appendingPathComponent("missing"), target: target()), .unverified)
     }
+
+    func testSingletonLockGuardDetectsLiveStaleUnreadableAndMirroredLocks() throws {
+        let fm = FileManager.default
+        let appSupport = root.appendingPathComponent("Library/Application Support/DemoApp")
+        let partitionCache = appSupport.appendingPathComponent("Partitions/work/Cache")
+        try fm.createDirectory(at: partitionCache, withIntermediateDirectories: true)
+        let lock = appSupport.appendingPathComponent("SingletonLock")
+
+        XCTAssertEqual(SingletonLockGuard.inspect(lock), .none)
+        XCTAssertFalse(SingletonLockGuard.isPathHeld(partitionCache, home: root))
+
+        // Live symlink lock protects nested partition cache and blocks StorageSafety even without bundle ID match.
+        try fm.createSymbolicLink(atPath: lock.path, withDestinationPath: "macbook.local-4242")
+        XCTAssertEqual(SingletonLockGuard.inspect(lock, isProcessAlive: { $0 == 4242 }), .live(pid: 4242))
+        XCTAssertTrue(SingletonLockGuard.isPathHeld(partitionCache, home: root, isProcessAlive: { $0 == 4242 }))
+        XCTAssertEqual(
+            StorageSafety.check(partitionCache, target: target([partitionCache]), usage: usage([]), home: root, isProcessAlive: { $0 == 4242 }),
+            .inUse
+        )
+
+        // Stale lock (dead PID) allows cleanup.
+        XCTAssertEqual(SingletonLockGuard.inspect(lock, isProcessAlive: { _ in false }), .stale)
+        XCTAssertFalse(SingletonLockGuard.isPathHeld(partitionCache, home: root, isProcessAlive: { _ in false }))
+        XCTAssertEqual(
+            StorageSafety.check(partitionCache, target: target([partitionCache]), usage: usage([]), home: root, isProcessAlive: { _ in false }),
+            .allowed
+        )
+
+        // Malformed symlink or non-symlink fails closed as unreadable.
+        try fm.removeItem(at: lock)
+        try fm.createSymbolicLink(atPath: lock.path, withDestinationPath: "malformed")
+        XCTAssertEqual(SingletonLockGuard.inspect(lock), .unreadable)
+        XCTAssertTrue(SingletonLockGuard.isPathHeld(partitionCache, home: root))
+
+        try fm.removeItem(at: lock)
+        try "not-a-symlink".write(to: lock, atomically: true, encoding: .utf8)
+        XCTAssertEqual(SingletonLockGuard.inspect(lock), .unreadable)
+        XCTAssertTrue(SingletonLockGuard.isPathHeld(partitionCache, home: root))
+        try fm.removeItem(at: lock)
+
+        // Mirrored Chromium layout: cache under Library/Caches, SingletonLock under Library/Application Support.
+        let browserCache = root.appendingPathComponent("Library/Caches/Arc/User Data/Default/Cache")
+        let browserSupport = root.appendingPathComponent("Library/Application Support/Arc/User Data")
+        try fm.createDirectory(at: browserCache, withIntermediateDirectories: true)
+        try fm.createDirectory(at: browserSupport, withIntermediateDirectories: true)
+        let browserLock = browserSupport.appendingPathComponent("SingletonLock")
+        try fm.createSymbolicLink(atPath: browserLock.path, withDestinationPath: "macbook.local-7777")
+        XCTAssertTrue(SingletonLockGuard.isPathHeld(browserCache, home: root, isProcessAlive: { $0 == 7777 }))
+        XCTAssertFalse(SingletonLockGuard.isPathHeld(browserCache, home: root, isProcessAlive: { _ in false }))
+    }
+
+    func testExpandedToolsPreserveCredentialsAndAuthPlugins() throws {
+        let fm = FileManager.default
+        let now = Date()
+        let old = now.addingTimeInterval(-15 * 86_400)
+        @discardableResult
+        func makeOld(_ relative: String, dir: Bool = false) throws -> URL {
+            let url = root.appendingPathComponent(relative)
+            try fm.createDirectory(at: dir ? url : url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if !dir { try "x".write(to: url, atomically: true, encoding: .utf8) }
+            try fm.setAttributes([.modificationDate: old], ofItemAtPath: url.path)
+            return url
+        }
+
+        let kubeDiscovery = try makeOld(".kube/cache/discovery", dir: true)
+        let kubeHttp = try makeOld(".kube/cache/http", dir: true)
+        try makeOld(".kube/cache/oidc-login/token.json")
+        try makeOld(".kube/cache/kubelogin/token.json")
+        try makeOld(".kube/config")
+
+        let ghCache = try makeOld(".config/gh/cache", dir: true)
+        try makeOld(".config/gh/hosts.yml")
+        try makeOld(".config/gh/config.yml")
+
+        var yaml = try String(contentsOf: TestSupport.stacksDirectory.appendingPathComponent("extended-tools.yaml"), encoding: .utf8)
+        yaml = yaml.replacingOccurrences(of: #"\$\{[^:}]+:-([^}]+)\}"#, with: "$1", options: .regularExpression)
+            .replacingOccurrences(of: "~/", with: root.path + "/")
+        let entries = try XCTUnwrap(YAMLDecoder().decode(StackFile.self, from: yaml).storage)
+
+        let kubectl = try XCTUnwrap(entries.first { $0.id == "kubectl-cache" })
+        let kubectlPaths = Set((kubectl.paths ?? []).flatMap { PathResolver.resolve($0, now: now) }.map(\.path))
+        XCTAssertEqual(kubectlPaths, [kubeDiscovery.path, kubeHttp.path])
+
+        let gh = try XCTUnwrap(entries.first { $0.id == "github-cli-cache" })
+        let ghPaths = Set((gh.paths ?? []).flatMap { PathResolver.resolve($0, now: now) }.map(\.path))
+        XCTAssertEqual(ghPaths, [ghCache.path])
+    }
 }
 
 final class ApplicationUsageSnapshotTests: XCTestCase {

@@ -200,3 +200,140 @@ storage:
     paths:
       - glob: "${SONAR_USER_HOME:-~/.sonar}/cache"
         older_than_days: 7
+
+  # https://cli.github.com/manual/gh_help_environment
+  - id: github-cli-cache
+    name: "GitHub CLI (gh) HTTP cache"
+    description:
+      en: "Manual cache review. Only gh HTTP response cache is removed; authentication tokens in hosts.yml and config.yml are preserved."
+      pt-BR: "Revisão manual de cache. Remove apenas o cache HTTP do gh; tokens em hosts.yml e config.yml são preservados."
+      es: "Revisión manual de caché. Solo elimina la caché HTTP de gh; se conservan los tokens en hosts.yml y config.yml."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["gh"]
+    paths:
+      - glob: "${GH_CONFIG_DIR:-~/.config/gh}/cache"
+        older_than_days: 7
+
+  # https://kubernetes.io/docs/reference/kubectl/
+  - id: kubectl-cache
+    name: "kubectl discovery & HTTP cache"
+    description:
+      en: "Manual cache review. Only discovery and http cache folders are targeted; kubeconfig and credential plugin caches (kubelogin, oidc-login) are preserved."
+      pt-BR: "Revisão manual de cache. Remove apenas as pastas discovery e http; kubeconfig e plugins de credenciais (kubelogin, oidc-login) são preservados."
+      es: "Revisión manual de caché. Solo apunta a discovery y http; se conservan kubeconfig y cachés de plugins de credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["kubectl", "helm", "k9s"]
+    paths:
+      - glob: "~/.kube/cache/discovery"
+        older_than_days: 7
+      - glob: "~/.kube/cache/http"
+        older_than_days: 7
+
+  # https://helm.sh/docs/helm/helm/#options
+  - id: infra-helm-cache
+    name: "Helm chart repository cache"
+    description:
+      en: "Manual cache review. Only cached chart index and archive files are removed; repositories.yaml and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Remove apenas índices e pacotes em cache; repositories.yaml e credenciais são preservados."
+      es: "Revisión manual de caché. Solo elimina índices y paquetes en caché; se conservan repositories.yaml y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["helm"]
+    paths:
+      - glob: "${HELM_CACHE_HOME:-~/Library/Caches/helm}/repository"
+        older_than_days: 7
+
+  # https://dart.dev/tools/dart-analyze
+  - id: dart-analysis-cache
+    name: "Dart analysis driver cache"
+    description:
+      en: "Manual cache review. Close Dart/Flutter tools first. Only the .analysis-driver byte store is removed; Pub cache and SDKs are preserved."
+      pt-BR: "Revisão manual de cache. Feche ferramentas Dart/Flutter antes. Remove apenas .analysis-driver; Pub cache e SDKs são preservados."
+      es: "Revisión manual de caché. Cierra herramientas Dart/Flutter primero. Solo elimina .analysis-driver; se conservan Pub cache y SDKs."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["dart", "flutter"]
+    paths:
+      - glob: "~/.dartServer/.analysis-driver"
+        older_than_days: 7
+
+  # https://clang.llvm.org/docs/Modules.html
+  - id: clang-module-cache
+    name: "Clang module cache"
+    description:
+      en: "Manual cache review. Close compilers and Xcode builds first. Precompiled module caches rebuild automatically on the next build."
+      pt-BR: "Revisão manual de cache. Feche compiladores e builds do Xcode antes. Módulos pré-compilados são recriados no próximo build."
+      es: "Revisión manual de caché. Cierra compiladores y builds de Xcode primero. Los módulos precompilados se reconstruyen en el siguiente build."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["clang", "swift", "xcodebuild"]
+    paths:
+      - glob: "~/Library/Caches/clang/ModuleCache"
+        older_than_days: 7
+
+  # https://pyinstaller.org/en/stable/usage.html
+  - id: pyinstaller-bincache
+    name: "PyInstaller binary cache"
+    description:
+      en: "Manual cache review. Close Python/PyInstaller builds first. Cached bootloader binaries regenerate automatically."
+      pt-BR: "Revisão manual de cache. Feche builds Python/PyInstaller antes. Binários em cache são regenerados automaticamente."
+      es: "Revisión manual de caché. Cierra builds Python/PyInstaller primero. Los binarios en caché se regeneran automáticamente."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["pyinstaller", "python"]
+    paths:
+      - glob: "~/Library/Application Support/pyinstaller/bincache*"
+        older_than_days: 7
+
+  # https://hex.pm/docs/tasks
+  - id: elixir-hex-cache
+    name: "Elixir Hex package cache"
+    description:
+      en: "Manual cache review. Close Mix/Elixir first. Downloaded Hex tarballs can be fetched again; credentials and config are preserved."
+      pt-BR: "Revisão manual de cache. Feche Mix/Elixir antes. Pacotes Hex serão baixados novamente; credenciais e configuração são preservados."
+      es: "Revisión manual de caché. Cierra Mix/Elixir primero. Los paquetes Hex se descargarán de nuevo; se conservan credenciales y ajustes."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["mix", "elixir", "beam"]
+    paths:
+      - glob: "${HEX_HOME:-~/.hex}/packages"
+        older_than_days: 7
+
+  # https://cabal.readthedocs.io/en/stable/config.html
+  - id: haskell-cabal-logs
+    name: "Cabal build logs"
+    description:
+      en: "Manual cache review. Close Cabal/GHC first. Removes old build logs while keeping installed packages and store."
+      pt-BR: "Revisão manual de cache. Feche Cabal/GHC antes. Remove logs antigos de build mantendo pacotes instalados e store."
+      es: "Revisión manual de caché. Cierra Cabal/GHC primero. Elimina registros antiguos de build conservando paquetes y store."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["cabal", "ghc"]
+    paths:
+      - glob: "~/.cabal/logs"
+        older_than_days: 7
+
+  # https://nektosact.com/usage/index.html
+  - id: ci-act-cache
+    name: "act (local GitHub Actions) cache"
+    description:
+      en: "Manual cache review. Close act first. Cached local GitHub Actions artifacts rebuild on the next workflow run."
+      pt-BR: "Revisão manual de cache. Feche o act antes. Artefatos locais de cache do GitHub Actions são recriados na próxima execução."
+      es: "Revisión manual de caché. Cierra act primero. La caché local de GitHub Actions se regenera en la siguiente ejecución."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["act"]
+    paths:
+      - glob: "~/.cache/actcache"
+        older_than_days: 7

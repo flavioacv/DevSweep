@@ -57,4 +57,6 @@ struct StorageTarget: Identifiable, Sendable {
     var autoRecommend: Bool = true
     /// Per-target suggestion threshold; falls back to the global preference.
     var recommendMinBytes: Int64? = nil
+    /// Exact generated artifacts authorized by confirmed project discovery, including external disks.
+    var authorizedProjectPaths: [URL] = []
 }

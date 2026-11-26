@@ -28,7 +28,7 @@ enum Cleaner {
         }
         switch target.method {
         case .delete:
-            errors += target.paths.compactMap(SafeDelete.remove)
+            errors += target.paths.compactMap { SafeDelete.remove($0, authorizedProjectPaths: target.authorizedProjectPaths) }
         case .trash:
             for url in target.paths where PathGlob.exists(url.path) {
                 do {
@@ -46,7 +46,7 @@ enum Cleaner {
                 }
             }
             if thenDelete {
-                errors += target.paths.compactMap(SafeDelete.remove)
+                errors += target.paths.compactMap { SafeDelete.remove($0, authorizedProjectPaths: target.authorizedProjectPaths) }
             }
         }
         CleanupLog.record(CleanupLog.Entry(
@@ -78,11 +78,18 @@ enum SafeDelete {
         "Containers", "Group Containers", "Mobile Documents", "Mail", "Messages",
     ]
 
-    /// Last line of defense: only paths strictly inside the home folder, never the well-known roots themselves.
-    static func isAllowed(_ url: URL) -> Bool {
+    /// Home paths retain protected-root checks; external paths require exact project authorization.
+    static func isAllowed(_ url: URL, authorizedProjectPaths: [URL] = []) -> Bool {
         let path = url.standardizedFileURL.path
         let home = NSHomeDirectory()
-        guard path.hasPrefix(home + "/"), !path.contains("/../") else { return false }
+        guard path.hasPrefix(home + "/") else {
+            // Reject links (including linked ancestors) that now redirect a previously scanned artifact.
+            let resolved = url.resolvingSymlinksInPath().standardizedFileURL.path
+            return resolved == path && authorizedProjectPaths.contains {
+                $0.standardizedFileURL.path == path
+            }
+        }
+        guard !path.contains("/../") else { return false }
         let parts = path.dropFirst(home.count + 1).split(separator: "/").map(String.init)
         guard !parts.isEmpty else { return false }
         if parts.count == 1 && protectedTopLevel.contains(parts[0]) { return false }
@@ -91,9 +98,9 @@ enum SafeDelete {
         return true
     }
 
-    static func remove(_ url: URL) -> String? {
+    static func remove(_ url: URL, authorizedProjectPaths: [URL] = []) -> String? {
         guard PathGlob.exists(url.path) else { return nil }
-        guard isAllowed(url) else { return tr("error.blocked", ["path": url.path]) }
+        guard isAllowed(url, authorizedProjectPaths: authorizedProjectPaths) else { return tr("error.blocked", ["path": url.path]) }
         do {
             try FileManager.default.removeItem(at: url)
             return nil

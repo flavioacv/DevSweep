@@ -55,6 +55,18 @@ struct GeneralDashboard: View {
             }
         }
         .onDisappear { model.cancel() }
+        .onChange(of: model.explorerMode) { _, mode in
+            model.selected = []
+            if mode == .largeFiles && model.explorerFilter.minimumBytes == 0 {
+                model.explorerFilter.minimumBytes = 100 * 1_048_576
+            } else { Task { await model.scan(force: true) } }
+        }
+        .onChange(of: model.explorerFilter.minimumBytes) { _, _ in
+            model.selected = []
+            if model.area == .explorer && model.explorerMode == .largeFiles { Task { await model.scan(force: true) } }
+        }
+        .onChange(of: model.explorerFilter) { _, _ in model.selected = [] }
+        .onChange(of: model.search) { _, _ in model.selected = [] }
         .sheet(isPresented: $showingReview) { reviewSheet }
         .sheet(isPresented: $historyVisible) { CleanupHistoryView().environmentObject(app) }
     }
@@ -101,29 +113,32 @@ struct GeneralDashboard: View {
 
     private var results: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if model.area == .explorer { explorerControls }
             TextField(tr("general.search"), text: $model.search).textFieldStyle(.roundedBorder)
             HStack {
                 Text(tr("general.count", ["count": model.report.entries.count, "inspected": model.report.inspected]))
                 Spacer()
-                Text(model.scanning ? tr("storage.measuring") : model.report.complete ? tr("general.complete") : tr("general.partial"))
-                    .foregroundStyle(model.report.complete ? Color.secondary : .orange)
+                Text(model.scanning ? tr("storage.measuring") : !model.report.complete ? tr("general.partial")
+                     : model.fullyMeasured ? tr("general.complete") : tr("explorer.partial_measurement"))
+                    .foregroundStyle(model.report.complete && model.fullyMeasured ? Color.secondary : .orange)
             }
             .font(.caption)
             if model.scanning {
                 Text(model.currentPath).font(.caption2).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
             }
-            if !model.report.issues.isEmpty {
-                DisclosureGroup(tr("general.issues", ["count": model.report.issues.count])) {
+            let issues = model.report.issues + (model.scanning ? [] : model.measurementIssues)
+            if !issues.isEmpty {
+                DisclosureGroup(tr("general.issues", ["count": issues.count])) {
                     ScrollView {
                         VStack(alignment: .leading) {
-                            ForEach(Array(model.report.issues.enumerated()), id: \.offset) { _, issue in
+                            ForEach(Array(issues.enumerated()), id: \.offset) { _, issue in
                                 Text(issue).font(.caption2).textSelection(.enabled)
                             }
                         }
                     }.frame(maxHeight: 100)
                 }.foregroundStyle(.orange)
             }
-            if model.report.entries.isEmpty && !model.scanning {
+            if model.visible.isEmpty && !model.scanning {
                 ContentUnavailableView(tr("general.no_results"), systemImage: "magnifyingglass", description: Text(tr("general.no_results_help")))
             } else {
                 ScrollView {
@@ -146,6 +161,41 @@ struct GeneralDashboard: View {
         }
     }
 
+    private var explorerControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker(tr("explorer.mode"), selection: $model.explorerMode) {
+                ForEach(ExplorerMode.allCases) { Text($0.title).tag($0) }
+            }.pickerStyle(.segmented).disabled(model.scanning)
+            HStack {
+                Picker(tr("explorer.minimum"), selection: $model.explorerFilter.minimumBytes) {
+                    Text(tr("explorer.any_size")).tag(Int64(0))
+                    Text("100 MB").tag(Int64(100 * 1_048_576))
+                    Text("1 GB").tag(Int64(1_073_741_824))
+                    Text("5 GB").tag(Int64(5 * 1_073_741_824))
+                }.disabled(model.scanning)
+                Picker(tr("explorer.age"), selection: $model.explorerFilter.olderThanDays) {
+                    Text(tr("explorer.any_date")).tag(0)
+                    Text(tr("explorer.days", ["count": 30])).tag(30)
+                    Text(tr("explorer.days", ["count": 90])).tag(90)
+                    Text(tr("explorer.days", ["count": 365])).tag(365)
+                }
+                Picker(tr("explorer.order"), selection: $model.explorerSort) {
+                    ForEach(ExplorerSort.allCases) { Text($0.title).tag($0) }
+                }
+            }.controlSize(.small)
+            TextField(tr("explorer.extensions"), text: $model.explorerFilter.extensions).textFieldStyle(.roundedBorder)
+            Text(tr("explorer.showing", ["visible": model.visible.count, "total": model.report.entries.count]))
+                .font(.caption).foregroundStyle(.secondary)
+            if let volume = model.volume {
+                Text(tr("explorer.volume", ["path": volume.path, "free": Fmt.disk(volume.free), "total": Fmt.disk(volume.total)]))
+                    .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            if model.explorerMode == .largeFiles {
+                Text(tr("explorer.recursive_notice")).font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private func row(_ entry: GeneralEntry) -> some View {
         HStack(alignment: .center, spacing: 10) {
             Toggle("", isOn: Binding(get: { model.selected.contains(entry.id) }, set: {
@@ -159,7 +209,8 @@ struct GeneralDashboard: View {
             }
             Spacer()
             if let measurement = model.measurements[entry.id] { MeasurementLabel(measurement: measurement).font(.caption.monospacedDigit()) }
-            else { ProgressView().controlSize(.mini) }
+            else if model.scanning { ProgressView().controlSize(.mini) }
+            else { Text(tr("storage.unavailable")).font(.caption).foregroundStyle(.orange) }
             Button { NSWorkspace.shared.activateFileViewerSelecting([entry.url]) } label: { Image(systemName: "folder") }
                 .buttonStyle(.borderless).help(tr("storage.show_in_finder"))
             if model.area == .explorer, (try? entry.url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {

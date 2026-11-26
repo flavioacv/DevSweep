@@ -88,7 +88,8 @@ enum StorageCatalog {
             stopProcesses: (definition.stopProcesses ?? []) + (result?.stopProcesses ?? []),
             autoRecommend: (definition.autoSuggest ?? true) && (result?.autoSuggest ?? true),
             recommendMinBytes: definition.suggestAbove?.bytes,
-            requiresAppsClosed: definition.requiresAppsClosed ?? []
+            requiresAppsClosed: definition.requiresAppsClosed ?? [],
+            requiresToolsIdle: definition.requiresToolsIdle ?? []
         )
     }
 

@@ -19,6 +19,7 @@ struct SystemSnapshot: Sendable {
     var pressure: MemoryPressure
     var diskFree: Int64
     var diskTotal: Int64
+    var memCache: Int64? = nil
 
     var memFraction: Double { memTotal > 0 ? Double(memUsed) / Double(memTotal) : 0 }
     var memoryTight: Bool { pressure != .normal || memFraction > 0.85 }
@@ -56,7 +57,8 @@ enum SystemStats {
             memTotal: total,
             pressure: MemoryPressure(rawValue: Int(level)) ?? .normal,
             diskFree: volume?.volumeAvailableCapacityForImportantUsage ?? 0,
-            diskTotal: Int64(volume?.volumeTotalCapacity ?? 0)
+            diskTotal: Int64(volume?.volumeTotalCapacity ?? 0),
+            memCache: status == KERN_SUCCESS ? (Int64(stats.external_page_count) + Int64(stats.purgeable_count)) * Int64(vm_kernel_page_size) : nil
         )
     }
 }

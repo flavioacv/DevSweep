@@ -30,6 +30,7 @@ struct MonitorSnapshot: Sendable {
     var uptime: TimeInterval
     var load: [Double]
     var thermal: String
+    var hardware = HardwareSnapshot()
 }
 
 enum SystemMonitor {
@@ -49,10 +50,13 @@ enum SystemMonitor {
         case .serious, .critical: thermal = tr("pressure.critical")
         @unknown default: thermal = tr("storage.unavailable")
         }
-        return MonitorSnapshot(system: SystemStats.snapshot(), cpuTicks: cpuTicks(), network: networkCounters(),
+        let network = networkCounters()
+        var hardware = HardwareMonitor.capture()
+        hardware.tunnels = network.keys.filter { $0.hasPrefix("utun") || $0.hasPrefix("ppp") || $0.hasPrefix("ipsec") }.sorted()
+        return MonitorSnapshot(system: SystemStats.snapshot(), cpuTicks: cpuTicks(), network: network,
             volumes: volumes(), processes: processes.sorted { $0.cpu > $1.cpu }, swap: swapOK ? swap.xsu_used : nil,
             battery: battery.0, charging: battery.1, uptime: ProcessInfo.processInfo.systemUptime,
-            load: loadOK ? averages : [], thermal: thermal)
+            load: loadOK ? averages : [], thermal: thermal, hardware: hardware)
     }
 
     static func cpuFractions(previous: [[UInt64]], current: [[UInt64]]) -> [Double]? {

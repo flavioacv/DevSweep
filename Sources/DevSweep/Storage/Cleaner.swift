@@ -64,7 +64,7 @@ enum Cleaner {
     static func clean(_ target: StorageTarget, usage suppliedUsage: ApplicationUsageSnapshot? = nil) -> [String] {
         var errors: [String] = []
         let usage = suppliedUsage ?? (target.needsUsageCheck
-            ? ApplicationUsageSnapshot.capture(includeApplications: !target.requiresAppsClosed.isEmpty) : nil)
+            ? ApplicationUsageSnapshot.capture(includeApplications: !target.requiresAppsClosed.isEmpty, includeTools: !target.requiresToolsIdle.isEmpty) : nil)
         let paths = target.paths.filter { path in
             guard PathGlob.exists(path.path) else { return true }
             switch StorageSafety.check(path, target: target, usage: usage) {
@@ -113,7 +113,7 @@ enum Cleaner {
             risk: target.risk.rawValue,
             method: target.method.logDescription,
             paths: target.paths.map(\.path),
-            errors: errors, title: target.title
+            errors: errors, title: target.title, bundleID: target.appRemovalContext?.bundleID
         ))
         return errors
     }

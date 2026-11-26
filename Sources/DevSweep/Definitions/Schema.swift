@@ -136,6 +136,7 @@ struct StorageDefinition: Decodable, Sendable {
     let thenDelete: Bool?
     let stopProcesses: [String]?
     let requiresAppsClosed: [String]?
+    let requiresToolsIdle: [String]?
     let autoSuggest: Bool?
     let suggestAbove: ByteSize?
     let requiresPath: String?
@@ -147,6 +148,7 @@ struct StorageDefinition: Decodable, Sendable {
         case thenDelete = "then_delete"
         case stopProcesses = "stop_processes"
         case requiresAppsClosed = "requires_apps_closed"
+        case requiresToolsIdle = "requires_tools_idle"
         case autoSuggest = "auto_suggest"
         case suggestAbove = "suggest_above"
         case requiresPath = "requires_path"

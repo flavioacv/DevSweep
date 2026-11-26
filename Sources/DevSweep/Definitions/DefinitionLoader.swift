@@ -185,6 +185,12 @@ enum DefinitionLoader {
                 problems.append("unknown provider '\(provider)' (available: \(StorageProviders.names.sorted().joined(separator: ", ")))")
             }
 
+            if let tools = definition.requiresToolsIdle {
+                if tools.isEmpty || tools.contains(where: { $0.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) == nil }) {
+                    problems.append("requires_tools_idle needs explicit executable prefixes")
+                }
+                if !(definition.stopProcesses ?? []).isEmpty || definition.run != nil { problems.append("requires_tools_idle cannot stop processes or run commands") }
+            }
             if let owners = definition.requiresAppsClosed {
                 if owners.isEmpty || owners.contains(where: {
                     $0.range(of: #"^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$"#, options: .regularExpression) == nil

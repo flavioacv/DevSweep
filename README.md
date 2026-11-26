@@ -155,11 +155,13 @@ space on APFS or after moving files to Trash.
 
 ## Mac cleanup
 
-The **Mac** group in Storage starts with disk caches for standard Chrome, Chromium, Edge and Brave
-profiles, Slack web/rendering caches (including its sandboxed layout), Slack `.log` files older
-than 30 days and user crash reports older than 30 days. These categories are manual: they do not
-join automatic recommendations. Browser cookies, passwords, history, Slack sessions and local
-storage are outside their path rules. Custom browser profile locations are not scanned.
+The **Mac** group in Storage includes disk caches for standard Chrome, Chromium, Edge and Brave
+profiles; Firefox HTTP caches (`cache2` in standard local profiles); Slack and Discord web/rendering
+caches; Slack, Discord and Zoom `.log` files older than 30 days; and user crash reports older than
+30 days. These categories are manual: they do not join automatic recommendations. Browser cookies,
+passwords, bookmarks and history, application sessions, local storage, Discord modules, Zoom
+recordings and chat files are outside their path rules. Custom browser profile locations are not
+scanned. Discord test-channel data and nested Zoom logs are outside this increment's scope.
 
 Close the owning application before cleaning its cache. Review checks bundle identifiers (including
 helpers and renamed app bundles) and open files; execution checks again. An uncertain check keeps
@@ -169,6 +171,11 @@ historical diagnostics cannot be regenerated. A file that becomes recent after s
 Cache layout references: [Chromium user/cache directories](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md)
 and [Electron session storage](https://www.electronjs.org/docs/latest/api/app/). The rules select only
 named cache subdirectories; they never sweep an entire application profile or system log tree.
+Additional references: [Firefox profile directories](https://firefox-source-docs.mozilla.org/toolkit/profile/index.html),
+[Firefox HTTP cache](https://firefox-source-docs.mozilla.org/networking/cache2/doc.html),
+[Discord cache troubleshooting](https://support.discord.com/hc/en-us/articles/31623498041623-Discord-Troubleshooting-Guide),
+[Discord debug logs](https://support.discord.com/hc/en-us/articles/1500006052822-How-to-Report-a-Bug)
+and [Zoom client logs](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0060047).
 
 ## Delivery checklist
 
@@ -186,6 +193,10 @@ check of that feature in the packaged app; a successful build alone does not cou
 | Slack web/rendering caches | Yes | Yes | Pending |
 | Slack logs older than 30 days | Yes | Yes | Pending |
 | User crash reports older than 30 days | Yes | Yes | Pending |
+| Firefox HTTP cache | Yes | Yes | Pending |
+| Discord web/rendering caches | Yes | Yes | Pending |
+| Discord logs older than 30 days | Yes | Yes | Pending |
+| Zoom logs older than 30 days | Yes | Yes | Pending |
 | More app caches, cloud/Office, virtualization and orphan cleanup | Planned | Pending | Pending |
 | Additional development stacks and artifact types | Planned | Pending | Pending |
 | Disk explorer and large-file review | Planned | Pending | Pending |

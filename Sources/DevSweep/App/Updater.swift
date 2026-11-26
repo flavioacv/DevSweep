@@ -15,7 +15,7 @@ final class Updater: NSObject, ObservableObject {
     private var controller: SPUStandardUpdaterController?
 
     static var repository: String {
-        Bundle.main.object(forInfoDictionaryKey: "DevSweepRepository") as? String ?? "Lukitaduarte/DevSweep"
+        Bundle.main.object(forInfoDictionaryKey: "DevSweepRepository") as? String ?? "flavioacv/DevSweep"
     }
 
     static var currentVersion: String {

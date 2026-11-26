@@ -29,9 +29,9 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>DevSweepRepository</key>
-    <string>Lukitaduarte/DevSweep</string>
+    <string>flavioacv/DevSweep</string>
     <key>SUFeedURL</key>
-    <string>https://github.com/Lukitaduarte/DevSweep/releases/latest/download/appcast.xml</string>
+    <string>https://github.com/flavioacv/DevSweep/releases/latest/download/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string></string>
     <key>SUEnableAutomaticChecks</key>

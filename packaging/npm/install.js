@@ -15,7 +15,7 @@ const { existsSync } = require("node:fs");
 const { tmpdir, homedir } = require("node:os");
 const { join } = require("node:path");
 
-const REPOSITORY = "Lukitaduarte/DevSweep";
+const REPOSITORY = "flavioacv/DevSweep";
 
 function parseArguments(argv) {
   const options = { destination: "/Applications", open: true, version: null };
@@ -58,7 +58,7 @@ async function download(url) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
-    console.log("usage: npx devsweep [--version x.y.z] [--to /Applications] [--no-open]");
+    console.log("usage: npx @flavioacv/devsweep [--version x.y.z] [--to /Applications] [--no-open]");
     return;
   }
   if (process.platform !== "darwin") {

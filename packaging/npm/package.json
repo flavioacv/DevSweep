@@ -1,5 +1,5 @@
 {
-  "name": "@lukitaduarte/devsweep",
+  "name": "@flavioacv/devsweep",
   "version": "0.0.0",
   "description": "Installer for DevSweep, the macOS menu bar app that cleans dev processes and caches",
   "bin": {
@@ -19,13 +19,13 @@
     "flutter",
     "gradle"
   ],
-  "homepage": "https://github.com/Lukitaduarte/DevSweep",
+  "homepage": "https://github.com/flavioacv/DevSweep",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Lukitaduarte/DevSweep.git"
+    "url": "git+https://github.com/flavioacv/DevSweep.git"
   },
   "bugs": {
-    "url": "https://github.com/Lukitaduarte/DevSweep/issues"
+    "url": "https://github.com/flavioacv/DevSweep/issues"
   },
   "license": "MIT",
   "publishConfig": {

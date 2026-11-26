@@ -134,6 +134,25 @@ Inside those folders DevSweep reads only what it needs to tell projects apart: m
 your source code.** The editor lists above are read once, locally, to propose the folders; nothing
 about them leaves your machine.
 
+## Reviewing a cleanup
+
+In **Storage**, click the list button beside a category to review its paths, grouped by project.
+Select individual artifacts, inspect them in Finder, and clean only the selected items. Categories
+that use a tool's cleanup command remain a single action: selecting paths cannot constrain what
+that command removes. Items labeled *Deletes data* still require a second confirmation.
+
+Project artifacts with Git-tracked files or open handles detected for the current user are
+preserved. A process whose working directory is the project root also protects the project.
+These checks run again before cleanup; an inconclusive activity probe preserves the artifact.
+They are conservative checks, not a filesystem lock against concurrent changes.
+
+Measurements distinguish complete, partial (`+`), and unavailable results. Incomplete sizes are
+excluded from automatic recommendations. Cleanup progress shows the current path; **Cancel next
+items** lets the current operation finish and leaves the remaining items untouched. The result
+stays visible, and **Cleanup history** opens recent attempts, errors, and session summaries from
+the local cleanup log. Reported reclaimed bytes are estimates, not a guarantee of immediate free
+space on APFS or after moving files to Trash.
+
 ## Customizing
 
 Stack knowledge lives in YAML files under [`stacks/`](stacks), one per stack. You can add your own without rebuilding:

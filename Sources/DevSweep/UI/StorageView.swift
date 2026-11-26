@@ -3,10 +3,11 @@ import SwiftUI
 
 struct StorageView: View {
     @EnvironmentObject private var model: AppModel
+    @State private var showingHistory = false
 
     var body: some View {
         // Unmeasured targets (nil size) stay visible with a spinner; empty ones are hidden.
-        let visible = model.targets.filter { (model.sizes[$0.id] ?? 1) > 0 }
+        let visible = model.targets.filter { (model.sizes[$0.id] ?? 1) > 0 || model.storageMeasurements[$0.id]?.state != .complete }
         let total = visible.reduce(0) { $0 + (model.sizes[$1.id] ?? 0) }
         let stacks = Array(Set(visible.map(\.stack)))
             .sorted { stackTotal($0, visible) > stackTotal($1, visible) }
@@ -15,13 +16,17 @@ struct StorageView: View {
             LazyVStack(alignment: .leading, spacing: 14) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(tr("storage.summary", ["size": Fmt.disk(total)]))
+                        Text(summaryText(total: total))
                             .font(.system(size: 12.5, weight: .semibold))
                         Text(scanCaption)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
+                    Button { showingHistory = true } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .help(tr("cleanup.history"))
                 }
                 .padding(10)
                 .card()
@@ -38,6 +43,14 @@ struct StorageView: View {
             .padding(12)
             .padding(.bottom, 40)
         }
+        .sheet(isPresented: $showingHistory) { CleanupHistoryView().environmentObject(model) }
+    }
+
+    private func summaryText(total: Int64) -> String {
+        if model.storageMeasurements.values.contains(where: { $0.state != .complete }) {
+            return tr("storage.summary_partial", ["size": Fmt.disk(total)])
+        }
+        return tr("storage.summary", ["size": Fmt.disk(total)])
     }
 
     private var scanCaption: String {
@@ -72,7 +85,7 @@ private struct StorageSection: View {
                     Button(tr("storage.clean_non_destructive", ["count": nonDestructiveIDs.count])) {
                         Task { await model.clean(targetIDs: nonDestructiveIDs) }
                     }
-                    .disabled(nonDestructiveIDs.isEmpty)
+                    .disabled(nonDestructiveIDs.isEmpty || model.isScanningStorage || model.cleanupProgress != nil)
                 } label: {
                     Text(tr("storage.clean_safe"))
                 } primaryAction: {
@@ -81,7 +94,7 @@ private struct StorageSection: View {
                 .menuStyle(.button)
                 .controlSize(.small)
                 .fixedSize()
-                .disabled(nonDestructiveIDs.isEmpty)
+                .disabled(nonDestructiveIDs.isEmpty || model.isScanningStorage || model.cleanupProgress != nil)
                 .help(tr("storage.clean_safe_help"))
             }
             VStack(spacing: 0) {
@@ -98,6 +111,7 @@ private struct StorageSection: View {
 private struct StorageRow: View {
     @EnvironmentObject private var model: AppModel
     let target: StorageTarget
+    @State private var showingReview = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -113,8 +127,13 @@ private struct StorageRow: View {
                     .lineLimit(2)
             }
             Spacer(minLength: 6)
-            if let size = model.sizes[target.id] {
-                Text(Fmt.disk(size))
+            Button { showingReview = true } label: {
+                Image(systemName: "list.bullet.indent")
+            }
+            .buttonStyle(.borderless)
+            .help(tr("review.title"))
+            if let measurement = model.storageMeasurements[target.id] {
+                MeasurementLabel(measurement: measurement)
                     .font(.system(size: 12, weight: .semibold).monospacedDigit())
             } else {
                 ProgressView().controlSize(.mini)
@@ -127,10 +146,12 @@ private struct StorageRow: View {
             ) {
                 Task { await model.clean(targetIDs: [target.id]) }
             }
-            .disabled(model.sizes[target.id] == nil)
+            .disabled(model.sizes[target.id] == nil || model.isScanningStorage || model.cleanupProgress != nil
+                      || model.storageMeasurements[target.id]?.state != .complete)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+        .sheet(isPresented: $showingReview) { StorageReviewView(target: target).environmentObject(model) }
         .help(pathsHelp)
         .contextMenu {
             Button(tr("storage.show_in_finder")) {

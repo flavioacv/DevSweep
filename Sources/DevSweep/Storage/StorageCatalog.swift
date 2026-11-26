@@ -33,6 +33,7 @@ enum StorageCatalog {
 
             var paths = (definition.paths ?? []).flatMap { PathResolver.resolve($0) }
             var authorizedProjectPaths: [URL] = []
+            var projectRootsByPath: [String: URL] = [:]
             if let project = definition.project {
                 var contributing: [DevProject] = []
                 for candidate in projects where !candidate.markers.isDisjoint(with: project.markers) {
@@ -45,6 +46,7 @@ enum StorageCatalog {
                     if !found.isEmpty {
                         contributing.append(candidate)
                         paths += found
+                        for path in found { projectRootsByPath[path.path] = candidate.url }
                         if prefs.workspacesConfirmed {
                             let projectRoot = candidate.url.resolvingSymlinksInPath().standardizedFileURL.path
                             authorizedProjectPaths += found.filter {
@@ -58,6 +60,7 @@ enum StorageCatalog {
             }
             var target = makeTarget(spec, vars: vars, paths: paths, result: nil)
             target.authorizedProjectPaths = authorizedProjectPaths
+            target.projectRootsByPath = projectRootsByPath
             targets.append(target)
         }
         return targets.filter { !$0.paths.isEmpty }

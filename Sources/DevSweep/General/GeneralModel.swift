@@ -5,6 +5,7 @@ final class GeneralModel: ObservableObject {
     @Published var area: GeneralArea = .logs
     @Published var search = ""
     @Published var selected: Set<String> = []
+    @Published var uninstallApplication: URL?
     @Published var explorerMode: ExplorerMode = .folders
     @Published var explorerFilter = ExplorerFilter()
     @Published var explorerSort: ExplorerSort = .size
@@ -21,10 +22,11 @@ final class GeneralModel: ObservableObject {
     @Published private(set) var roots: [GeneralArea: URL] = [:]
     private let home: URL
     private let logDirectory: URL
+    private let applicationRoots: [URL]?
     private let maintenanceRunner: @Sendable (MaintenanceTask, URL, ScanControl) -> ShellResult
-    init(home: URL = URL(fileURLWithPath: NSHomeDirectory()), logDirectory: URL = CleanupLog.directory,
+    init(home: URL = URL(fileURLWithPath: NSHomeDirectory()), logDirectory: URL = CleanupLog.directory, applicationRoots: [URL]? = nil,
          maintenanceRunner: @escaping @Sendable (MaintenanceTask, URL, ScanControl) -> ShellResult = { $0.run(home: $1, control: $2) }) {
-        self.home = home; self.logDirectory = logDirectory; self.maintenanceRunner = maintenanceRunner
+        self.home = home; self.logDirectory = logDirectory; self.applicationRoots = applicationRoots; self.maintenanceRunner = maintenanceRunner
     }
     private var control = ScanControl()
     private var generation = UUID()
@@ -72,6 +74,8 @@ final class GeneralModel: ObservableObject {
         let prefs = PrefsSnapshot.current()
         let selectedRoot = roots[area]
         let home = home
+        let uninstallApplication = uninstallApplication
+        let applicationRoots = applicationRoots
         let scanRoot = root, mode = explorerMode, minimum = explorerFilter.minimumBytes
         let identity = FileIdentity.read(scanRoot)
         let volumes = SystemMonitor.volumes()
@@ -79,6 +83,7 @@ final class GeneralModel: ObservableObject {
         volume = mounted ? ExplorerScanner.volume(containing: scanRoot, volumes: volumes) : nil
         let key = area.rawValue + ":" + (selectedRoot?.path ?? "") + ":" + prefs.projectRoots.joined(separator: "|") + ":" + L10n.shared.language
             + ":" + (area == .explorer ? mode.rawValue + String(minimum) : "")
+            + ":" + (area == .applications ? uninstallApplication?.path ?? "" : "")
         if !force, let stored = cache[key], mounted, identity != nil, stored.3 == identity,
            Date().timeIntervalSince(stored.0) < 60 {
             let valid = await Task.detached(priority: .utility) {
@@ -93,10 +98,13 @@ final class GeneralModel: ObservableObject {
         scanning = true; selected = []; measurements = [:]; report = GeneralReport(); currentPath = root.path
         await withTaskCancellationHandler {
             let result = await Task.detached(priority: .utility) {
+                if area == .applications, let uninstallApplication {
+                    return AppUninstall.scan(application: uninstallApplication, home: home, control: flag, roots: applicationRoots)
+                }
                 if area == .explorer && mode == .largeFiles {
                     return ExplorerScanner.scan(root: scanRoot, home: home, minimumBytes: minimum, control: flag)
                 }
-                return GeneralScanner.scan(area, home: home, selectedRoot: selectedRoot, prefs: prefs, control: flag)
+                return GeneralScanner.scan(area, home: home, selectedRoot: selectedRoot, prefs: prefs, control: flag, applicationRoots: applicationRoots)
             }.value
             guard generation == run else { return }
             report = result
@@ -181,8 +189,13 @@ final class GeneralModel: ObservableObject {
             case .partial: status = "partial"
             default: status = "unavailable"
             }
-            return ["path": entry.url.path, "bytes": measurement?.bytes ?? 0, "measurement": status,
+            var output: [String: Any] = ["path": entry.url.path, "bytes": measurement?.bytes ?? 0, "measurement": status,
                     "reviewable": entry.removable, "risk": entry.target.risk.rawValue]
+            if let association = entry.association {
+                output["association"] = ["bundle_id": association.bundleID, "kind": association.kind.rawValue,
+                                         "personal_data": association.kind.personal, "evidence": association.evidence] as [String: Any]
+            }
+            return output
         }
         var output: [String: Any] = ["area": area.rawValue, "scan_complete": report.complete,
             "measurements_complete": fullyMeasured, "inspected": report.inspected,

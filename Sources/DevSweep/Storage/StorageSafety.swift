@@ -46,6 +46,7 @@ enum StorageSafety {
     static func check(
         _ path: URL, target: StorageTarget, usage: ApplicationUsageSnapshot? = nil, now: Date = Date()
     ) -> CleanupGuardVerdict {
+        if let context = target.appRemovalContext, !context.validates() { return .unverified }
         if let authorization = target.pathAuthorizations[path.path], !authorization.validates(path) { return .unverified }
         if !target.requiresAppsClosed.isEmpty || target.pathRules[path.path] != nil || !target.pathAuthorizations.isEmpty {
             let literal = path.standardizedFileURL.path

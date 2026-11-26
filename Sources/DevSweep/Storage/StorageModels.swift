@@ -72,7 +72,10 @@ struct StorageTarget: Identifiable, Sendable {
     /// Scan-time filters that must still hold immediately before execution.
     var pathRules: [String: PathSpec] = [:]
 
-    var needsUsageCheck: Bool { !requiresAppsClosed.isEmpty || !pathRules.isEmpty || !projectRootsByPath.isEmpty }
+    var pathAuthorizations: [String: PathAuthorization] = [:]
+    var protectNestedRepositories = false
+
+    var needsUsageCheck: Bool { !pathAuthorizations.isEmpty || !requiresAppsClosed.isEmpty || !pathRules.isEmpty || !projectRootsByPath.isEmpty }
 
     func selecting(paths selected: Set<URL>) -> StorageTarget? {
         guard method.supportsPathSelection else { return nil }
@@ -88,7 +91,9 @@ struct StorageTarget: Identifiable, Sendable {
                       authorizedProjectPaths: authorizedProjectPaths.filter { paths.contains($0) },
                       projectRootsByPath: projectRootsByPath.filter { pair in paths.contains { $0.path == pair.key } },
                       requiresAppsClosed: requiresAppsClosed,
-                      pathRules: pathRules.filter { pair in paths.contains { $0.path == pair.key } })
+                      pathRules: pathRules.filter { pair in paths.contains { $0.path == pair.key } },
+                      pathAuthorizations: pathAuthorizations.filter { pair in paths.contains { $0.path == pair.key } },
+                      protectNestedRepositories: protectNestedRepositories)
     }
 
     var cleanupUnits: [StorageTarget] {

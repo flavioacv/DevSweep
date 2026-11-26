@@ -29,6 +29,27 @@ Available in English, Português (Brasil) and Español.
 - **Safe by default.** Every item is labeled *Safe*, *Re-downloads* or *Deletes data*. Items that delete data are never cleaned in bulk and ask for confirmation.
 - **Keeps itself up to date.** When a new version is out, you get an update card with a link to the changelog and a one-click install.
 
+## General workspace
+
+Open **General workspace** from the menu bar to use the larger window. The existing developer scans and recommendations remain available in the menu.
+
+| Area | Available behavior |
+|---|---|
+| Logs | Discover logs older than 30 days in user Logs, application Logs and sandbox containers, without requiring an app-specific rule. |
+| Caches | Find recognizable cache directories and `CACHEDIR.TAG` folders. Unknown owners without a valid cache tag remain analysis-only; identified owners must be closed before removal. |
+| Projects | Discover 34 artifact folder names across confirmed workspaces using project markers. Git-tracked content, nested repositories and open artifacts are protected. These are manual candidates, not a claim that every artifact is unused. |
+| Storage explorer | Browse folders and local external volumes, sort by allocated size, search, reveal in Finder and review selected items. |
+| Installers | Find macOS/mobile installer files and ZIPs with installer entries, inspecting a bounded central directory without extraction. |
+| Applications | Inventory installed application bundles and move selected third-party bundles to Trash. Application Support, preferences and personal data are preserved. Apple apps remain analysis-only. |
+| Maintenance | Inspect launch agents, preference-file validity, Spotlight, login items and filesystem integrity. DNS resolver cache and QuickLook cache refresh are separate confirmed actions. |
+| Monitoring | Refresh CPU per core, memory, swap, load, uptime, local volume capacity, network rates per interface, processes, thermal pressure and battery charge when available. |
+
+Searches support cancellation, bounded traversal and explicit partial results. Measurements that time out or fail are not reported as zero or eligible for removal. Results and monitoring snapshots can be exported as JSON. Folder scans do not follow symlinks or cross mounts and skip online-only cloud files.
+
+General removal always requires selection, review and confirmation, uses Trash and shares cleanup progress and history. Scanned files, parents and roots are revalidated by identity before removal; modified regular files are preserved. Protected home roots, shell configuration and credential paths cannot be removed from this window. These observations do not lock the filesystem against concurrent changes. Allocated sizes are estimates and can count shared APFS blocks more than once.
+
+This is the general foundation, not complete Mole parity: GPU/SMART, disk transfer rates, fan/temperature sensors, battery health/cycles, orphan-service removal, firmware, backup cleanup and privileged or automatic repairs are not implemented. No maintenance task requests administrator privileges or repairs preferences automatically.
+
 ## Install
 
 ```bash

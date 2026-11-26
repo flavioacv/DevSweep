@@ -185,6 +185,19 @@ final class AppModel: ObservableObject {
         refreshSystem()
     }
 
+    func cleanGeneral(_ chosen: [StorageTarget]) async {
+        guard !isPerformingAll, !chosen.isEmpty,
+              chosen.allSatisfy({ target in
+                  guard case .trash = target.method else { return false }
+                  return !target.autoRecommend && target.risk == .dataLoss && target.paths.allSatisfy {
+                      target.pathAuthorizations[$0.path]?.validates($0) == true
+                  }
+              }) else { showBanner(tr("general.authorization_changed")); return }
+        let result = await cleanTargets(chosen.map(\.id), suppliedTargets: chosen)
+        showBanner(cleanMessage(freed: result.freed, errors: result.errors))
+        refreshSystem()
+    }
+
     func stop(rule: ProcessRule, processes: [ProcInfo], key: String) async {
         let result = await stopProcesses(rule: rule, processes: processes, key: key)
         showBanner(result.count > 0
@@ -269,10 +282,11 @@ final class AppModel: ObservableObject {
         cleanupHistory = await Task.detached(priority: .utility) { Array(CleanupLog.read().reversed()) }.value
     }
 
-    private func cleanTargets(_ ids: [String], selectedPaths: Set<URL>? = nil) async -> (freed: Int64, errors: [String]) {
+    private func cleanTargets(_ ids: [String], selectedPaths: Set<URL>? = nil, suppliedTargets: [StorageTarget]? = nil) async -> (freed: Int64, errors: [String]) {
         guard cleanupProgress == nil else { return (0, [tr("cleanup.already_running")]) }
         guard !isScanningStorage else { return (0, [tr("cleanup.wait_for_scan")]) }
-        let selected = targets.filter { ids.contains($0.id) && !busy.contains($0.id) }.compactMap { target in
+        let source = suppliedTargets ?? targets
+        let selected = source.filter { ids.contains($0.id) && !busy.contains($0.id) }.compactMap { target in
             if let selectedPaths { return target.selecting(paths: selectedPaths) }
             return target
         }
@@ -306,7 +320,7 @@ final class AppModel: ObservableObject {
                                               currentPath: unit.paths.first?.path ?? unit.title)
         }
         // Refresh entire targets: a selected subset must not replace the category's total.
-        for target in targets where changed.contains(target.id) {
+        for target in source where changed.contains(target.id) {
             cleanupProgress = CleanupProgress(completed: completed, total: units.count,
                                               currentPath: target.title, isRefreshing: true)
             let measurement = await Task.detached(priority: .utility) { SizeCalculator.measure(target.paths) }.value

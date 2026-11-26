@@ -292,7 +292,8 @@ final class GeneralModel: ObservableObject {
         if let estimate = fileSpaceEstimate {
             output["file_space_estimate"] = ["allocated_unique_bytes": estimate.allocatedBytes, "potential_after_trash_upper_bound": estimate.potentialAfterTrashBytes,
                 "files": estimate.files, "unique_inodes": estimate.uniqueFiles, "inodes_with_other_links": estimate.linksOutsideSelection,
-                "complete": estimate.complete, "apfs_shared_blocks_deduplicated": false] as [String: Any]
+                "deduplicated_apfs_clones": estimate.deduplicatedClones,
+                "complete": estimate.complete, "apfs_shared_blocks_deduplicated": estimate.apfsClonesDeduplicated] as [String: Any]
         }
         if area == .explorer {
             output["root"] = root.path; output["mode"] = explorerMode.rawValue

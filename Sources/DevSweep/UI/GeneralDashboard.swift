@@ -163,6 +163,9 @@ struct GeneralDashboard: View {
                     Text(tr("footprint.summary", ["size": Fmt.disk(estimate.allocatedBytes), "count": estimate.uniqueFiles, "possible": Fmt.disk(estimate.potentialAfterTrashBytes)]))
                         .font(.caption).textSelection(.enabled)
                     Text(tr("footprint.links", ["count": estimate.linksOutsideSelection])).font(.caption2).foregroundStyle(.secondary)
+                    if estimate.deduplicatedClones > 0 {
+                        Text(tr("footprint.clones", ["count": estimate.deduplicatedClones])).font(.caption2).foregroundStyle(.secondary)
+                    }
                     if !estimate.complete { Text(tr("footprint.partial")).font(.caption2).foregroundStyle(.orange) }
                     Text(tr("footprint.notice")).font(.caption2).foregroundStyle(.secondary)
                 }

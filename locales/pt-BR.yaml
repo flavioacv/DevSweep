@@ -384,6 +384,7 @@ docker.partial: "A etapa do builder terminou, mas o engine mudou ou ficou indisp
 footprint.calculate: "Estimar espaço dos arquivos selecionados/filtrados"
 footprint.summary: "{size} alocados em {count} arquivos únicos · até {possible} após exclusão permanente da Lixeira"
 footprint.links: "{count} arquivos têm hardlinks fora desta seleção."
+footprint.clones: "{count} clone(s) APFS deduplicado(s) nesta seleção."
 footprint.partial: "Estimativa parcial: pastas ou arquivos indisponíveis não estão incluídos."
 footprint.notice: "Enviar à Lixeira não libera espaço imediatamente. Hardlinks contam uma vez e só entram no potencial quando todos os links estão selecionados. Clones/blocos compartilhados APFS e snapshots podem reduzir a recuperação real; este é um limite superior, não uma garantia."
 installer.downloads: "Downloads"

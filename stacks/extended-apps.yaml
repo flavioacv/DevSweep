@@ -1,0 +1,336 @@
+# Only Apple-documented disposable bundle cache namespaces; never profiles or VM disks.
+# https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/MacOSXDirectories/MacOSXDirectories.html
+stack:
+  id: extended-apps
+  name:
+    en: Application caches
+    pt-BR: Caches de aplicativos
+    es: Cachés de aplicaciones
+  icon: app
+  order: 810
+storage:
+  - id: app-cache-safari
+    name: "Safari — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.apple.Safari"]
+    paths:
+      - "~/Library/Caches/com.apple.Safari"
+      - "~/Library/Containers/com.apple.Safari/Data/Library/Caches/com.apple.Safari"
+  - id: app-cache-office-word
+    name: "Microsoft Word — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.microsoft.Word"]
+    paths:
+      - "~/Library/Caches/com.microsoft.Word"
+      - "~/Library/Containers/com.microsoft.Word/Data/Library/Caches/com.microsoft.Word"
+  - id: app-cache-office-excel
+    name: "Microsoft Excel — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.microsoft.Excel"]
+    paths:
+      - "~/Library/Caches/com.microsoft.Excel"
+      - "~/Library/Containers/com.microsoft.Excel/Data/Library/Caches/com.microsoft.Excel"
+  - id: app-cache-office-powerpoint
+    name: "Microsoft PowerPoint — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.microsoft.Powerpoint"]
+    paths:
+      - "~/Library/Caches/com.microsoft.Powerpoint"
+      - "~/Library/Containers/com.microsoft.Powerpoint/Data/Library/Caches/com.microsoft.Powerpoint"
+  - id: app-cache-onedrive
+    name: "OneDrive — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.microsoft.OneDrive"]
+    paths:
+      - "~/Library/Caches/com.microsoft.OneDrive"
+      - "~/Library/Containers/com.microsoft.OneDrive/Data/Library/Caches/com.microsoft.OneDrive"
+  - id: app-cache-dropbox
+    name: "Dropbox — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.getdropbox.dropbox"]
+    paths:
+      - "~/Library/Caches/com.getdropbox.dropbox"
+      - "~/Library/Containers/com.getdropbox.dropbox/Data/Library/Caches/com.getdropbox.dropbox"
+  - id: app-cache-teams
+    name: "Microsoft Teams — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.microsoft.teams2"]
+    paths:
+      - "~/Library/Caches/com.microsoft.teams2"
+      - "~/Library/Containers/com.microsoft.teams2/Data/Library/Caches/com.microsoft.teams2"
+  - id: app-cache-telegram
+    name: "Telegram — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["ru.keepcoder.Telegram"]
+    paths:
+      - "~/Library/Caches/ru.keepcoder.Telegram"
+      - "~/Library/Containers/ru.keepcoder.Telegram/Data/Library/Caches/ru.keepcoder.Telegram"
+  - id: app-cache-signal
+    name: "Signal — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["org.whispersystems.signal-desktop"]
+    paths:
+      - "~/Library/Caches/org.whispersystems.signal-desktop"
+      - "~/Library/Containers/org.whispersystems.signal-desktop/Data/Library/Caches/org.whispersystems.signal-desktop"
+  - id: app-cache-notion
+    name: "Notion — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["notion.id"]
+    paths:
+      - "~/Library/Caches/notion.id"
+      - "~/Library/Containers/notion.id/Data/Library/Caches/notion.id"
+  - id: app-cache-obsidian
+    name: "Obsidian — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["md.obsidian"]
+    paths:
+      - "~/Library/Caches/md.obsidian"
+      - "~/Library/Containers/md.obsidian/Data/Library/Caches/md.obsidian"
+  - id: app-cache-spotify
+    name: "Spotify — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.spotify.client"]
+    paths:
+      - "~/Library/Caches/com.spotify.client"
+      - "~/Library/Containers/com.spotify.client/Data/Library/Caches/com.spotify.client"
+  - id: app-cache-vlc
+    name: "VLC — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["org.videolan.vlc"]
+    paths:
+      - "~/Library/Caches/org.videolan.vlc"
+      - "~/Library/Containers/org.videolan.vlc/Data/Library/Caches/org.videolan.vlc"
+  - id: app-cache-figma
+    name: "Figma — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.figma.Desktop"]
+    paths:
+      - "~/Library/Caches/com.figma.Desktop"
+      - "~/Library/Containers/com.figma.Desktop/Data/Library/Caches/com.figma.Desktop"
+  - id: app-cache-obs
+    name: "OBS — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.obsproject.obs-studio"]
+    paths:
+      - "~/Library/Caches/com.obsproject.obs-studio"
+      - "~/Library/Containers/com.obsproject.obs-studio/Data/Library/Caches/com.obsproject.obs-studio"
+  - id: app-cache-postman
+    name: "Postman — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.postmanlabs.mac"]
+    paths:
+      - "~/Library/Caches/com.postmanlabs.mac"
+      - "~/Library/Containers/com.postmanlabs.mac/Data/Library/Caches/com.postmanlabs.mac"
+  - id: app-cache-insomnia
+    name: "Insomnia — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["rest.insomnia.Insomnia"]
+    paths:
+      - "~/Library/Caches/rest.insomnia.Insomnia"
+      - "~/Library/Containers/rest.insomnia.Insomnia/Data/Library/Caches/rest.insomnia.Insomnia"
+  - id: app-cache-dbeaver
+    name: "DBeaver — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["org.jkiss.dbeaver.core.product"]
+    paths:
+      - "~/Library/Caches/org.jkiss.dbeaver.core.product"
+      - "~/Library/Containers/org.jkiss.dbeaver.core.product/Data/Library/Caches/org.jkiss.dbeaver.core.product"
+  - id: app-cache-tableplus
+    name: "TablePlus — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.tinyapp.TablePlus"]
+    paths:
+      - "~/Library/Caches/com.tinyapp.TablePlus"
+      - "~/Library/Containers/com.tinyapp.TablePlus/Data/Library/Caches/com.tinyapp.TablePlus"
+  - id: app-cache-proxyman
+    name: "Proxyman — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.proxyman.NSProxy"]
+    paths:
+      - "~/Library/Caches/com.proxyman.NSProxy"
+      - "~/Library/Containers/com.proxyman.NSProxy/Data/Library/Caches/com.proxyman.NSProxy"
+  - id: app-cache-raycast
+    name: "Raycast — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.raycast.macos"]
+    paths:
+      - "~/Library/Caches/com.raycast.macos"
+      - "~/Library/Containers/com.raycast.macos/Data/Library/Caches/com.raycast.macos"
+  - id: app-cache-alfred
+    name: "Alfred — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.runningwithcrayons.Alfred"]
+    paths:
+      - "~/Library/Caches/com.runningwithcrayons.Alfred"
+      - "~/Library/Containers/com.runningwithcrayons.Alfred/Data/Library/Caches/com.runningwithcrayons.Alfred"
+  - id: app-cache-anydesk
+    name: "AnyDesk — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.philandro.anydesk"]
+    paths:
+      - "~/Library/Caches/com.philandro.anydesk"
+      - "~/Library/Containers/com.philandro.anydesk/Data/Library/Caches/com.philandro.anydesk"
+  - id: app-cache-parallels
+    name: "Parallels Desktop — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.parallels.desktop.console"]
+    paths:
+      - "~/Library/Caches/com.parallels.desktop.console"
+      - "~/Library/Containers/com.parallels.desktop.console/Data/Library/Caches/com.parallels.desktop.console"
+  - id: app-cache-vmware
+    name: "VMware Fusion — cache"
+    description:
+      en: "Disposable cache namespace only. Close the application first. Documents, sessions, databases and virtual machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o aplicativo. Documentos, sessões, bancos de dados e máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra la aplicación. Se preservan documentos, sesiones, bases de datos y máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.vmware.fusion"]
+    paths:
+      - "~/Library/Caches/com.vmware.fusion"
+      - "~/Library/Containers/com.vmware.fusion/Data/Library/Caches/com.vmware.fusion"

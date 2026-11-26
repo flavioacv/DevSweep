@@ -69,14 +69,18 @@ struct StorageTarget: Identifiable, Sendable {
     var projectRootsByPath: [String: URL] = [:]
     /// Bundle identifiers whose main app and helpers must be absent before cleaning.
     var requiresAppsClosed: [String] = []
+    var requiresToolsIdle: [String] = []
     /// Scan-time filters that must still hold immediately before execution.
     var pathRules: [String: PathSpec] = [:]
 
     var pathAuthorizations: [String: PathAuthorization] = [:]
     var protectNestedRepositories = false
     var appRemovalContext: AppRemovalContext? = nil
+    var orphanRemovalContext: OrphanRemovalContext? = nil
+    var recursiveAgeDays: Int? = nil
+    var serviceRemovalContext: ServiceRemovalContext? = nil
 
-    var needsUsageCheck: Bool { !pathAuthorizations.isEmpty || !requiresAppsClosed.isEmpty || !pathRules.isEmpty || !projectRootsByPath.isEmpty }
+    var needsUsageCheck: Bool { !requiresToolsIdle.isEmpty || !pathAuthorizations.isEmpty || !requiresAppsClosed.isEmpty || !pathRules.isEmpty || !projectRootsByPath.isEmpty }
 
     func selecting(paths selected: Set<URL>) -> StorageTarget? {
         guard method.supportsPathSelection else { return nil }
@@ -92,9 +96,10 @@ struct StorageTarget: Identifiable, Sendable {
                       authorizedProjectPaths: authorizedProjectPaths.filter { paths.contains($0) },
                       projectRootsByPath: projectRootsByPath.filter { pair in paths.contains { $0.path == pair.key } },
                       requiresAppsClosed: requiresAppsClosed,
+                      requiresToolsIdle: requiresToolsIdle,
                       pathRules: pathRules.filter { pair in paths.contains { $0.path == pair.key } },
                       pathAuthorizations: pathAuthorizations.filter { pair in paths.contains { $0.path == pair.key } },
-                      protectNestedRepositories: protectNestedRepositories, appRemovalContext: appRemovalContext)
+                      protectNestedRepositories: protectNestedRepositories, appRemovalContext: appRemovalContext, orphanRemovalContext: orphanRemovalContext, recursiveAgeDays: recursiveAgeDays, serviceRemovalContext: serviceRemovalContext)
     }
 
     var cleanupUnits: [StorageTarget] {

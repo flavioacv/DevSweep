@@ -1,7 +1,7 @@
 import Foundation
 
 enum GeneralArea: String, CaseIterable, Identifiable, Sendable {
-    case logs, caches, temporaries, trash, external, projects, explorer, installers, applications, maintenance, monitor
+    case logs, caches, temporaries, trash, external, projects, explorer, installers, applications, orphans, maintenanceFiles, maintenance, monitor
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -14,6 +14,8 @@ enum GeneralArea: String, CaseIterable, Identifiable, Sendable {
         case .explorer: tr("general.explorer")
         case .installers: tr("general.installers")
         case .applications: tr("general.applications")
+        case .orphans: tr("orphans.title")
+        case .maintenanceFiles: tr("maintenance.files")
         case .maintenance: tr("general.maintenance")
         case .monitor: tr("general.monitor")
         }
@@ -29,6 +31,8 @@ enum GeneralArea: String, CaseIterable, Identifiable, Sendable {
         case .explorer: "internaldrive"
         case .installers: "shippingbox.and.arrow.backward"
         case .applications: "app"
+        case .orphans: "app.badge"
+        case .maintenanceFiles: "doc.badge.gearshape"
         case .maintenance: "wrench.and.screwdriver"
         case .monitor: "waveform.path.ecg"
         }
@@ -70,6 +74,8 @@ enum GeneralScanner {
             }
         }
         switch area {
+        case .orphans:
+            return OrphanScanner.scan(home: home, roots: applicationRoots, receipts: CleanupLog.read(), control: control)
         case .temporaries:
             return GeneralHygiene.temporaries(root: URL(fileURLWithPath: NSTemporaryDirectory()), home: home, control: control)
         case .trash:
@@ -185,7 +191,7 @@ enum GeneralScanner {
                     report.entries.append(item)
                 }
             }
-        case .maintenance, .monitor: break
+        case .maintenanceFiles, .maintenance, .monitor: break
         }
         var seen = Set<String>()
         report.entries = report.entries.filter { seen.insert($0.url.path).inserted }

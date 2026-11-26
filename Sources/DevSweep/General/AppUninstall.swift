@@ -1,7 +1,7 @@
 import Foundation
 
 enum AppFileKind: String, Sendable {
-    case application, cache, logs, savedState, preferences, support, container
+    case application, cache, logs, savedState, preferences, support, container, service
     var personal: Bool { self == .preferences || self == .support || self == .container }
     var title: String {
         switch self {
@@ -12,6 +12,7 @@ enum AppFileKind: String, Sendable {
         case .preferences: tr("uninstall.preferences")
         case .support: tr("uninstall.support")
         case .container: tr("uninstall.container")
+        case .service: tr("orphans.service")
         }
     }
 }

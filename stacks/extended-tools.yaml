@@ -1,0 +1,202 @@
+# Cache locations verified against the official source linked before each entry.
+stack:
+  id: extended-tools
+  name:
+    en: Development caches
+    pt-BR: Caches de desenvolvimento
+    es: Cachés de desarrollo
+  icon: hammer
+  order: 800
+storage:
+  # https://pip.pypa.io/en/stable/topics/caching/
+  - id: python-pip
+    name: "pip"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["pip", "python"]
+    paths:
+      - glob: "${PIP_CACHE_DIR:-~/Library/Caches/pip}"
+        older_than_days: 7
+  # https://docs.astral.sh/uv/concepts/cache/
+  - id: python-uv
+    name: "uv"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["uv", "python"]
+    paths:
+      - glob: "${UV_CACHE_DIR:-~/.cache/uv}"
+        older_than_days: 7
+  # https://docs.conda.io/projects/conda/en/stable/commands/clean.html
+  - id: python-conda-tarballs
+    name: "Conda package archives"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["conda", "python"]
+    paths:
+      - glob: "~/miniconda3/pkgs/*.conda"
+        older_than_days: 7
+        files_only: true
+      - glob: "~/miniconda3/pkgs/*.tar.bz2"
+        older_than_days: 7
+        files_only: true
+      - glob: "~/anaconda3/pkgs/*.conda"
+        older_than_days: 7
+        files_only: true
+      - glob: "~/anaconda3/pkgs/*.tar.bz2"
+        older_than_days: 7
+        files_only: true
+  # https://doc.rust-lang.org/cargo/guide/cargo-home.html
+  - id: rust-cargo-archives
+    name: "Cargo downloaded archives"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["cargo", "rustc"]
+    paths:
+      - glob: "${CARGO_HOME:-~/.cargo}/registry/cache/*/*.crate"
+        older_than_days: 7
+        files_only: true
+  # https://getcomposer.org/doc/06-config.md#cache-dir
+  - id: php-composer
+    name: "Composer"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["composer", "php"]
+    paths:
+      - glob: "${COMPOSER_CACHE_DIR:-~/Library/Caches/composer}"
+        older_than_days: 7
+  # https://ccache.dev/manual/latest.html
+  - id: compiler-ccache
+    name: "ccache"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["ccache", "clang", "gcc", "make", "ninja"]
+    paths:
+      - glob: "${CCACHE_DIR:-~/Library/Caches/ccache}"
+        older_than_days: 7
+  # https://mise.jdx.dev/directories.html
+  - id: tools-mise
+    name: "mise"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["mise"]
+    paths:
+      - glob: "${MISE_CACHE_DIR:-~/Library/Caches/mise}"
+        older_than_days: 7
+  # https://pre-commit.com/#managing-ci-caches
+  - id: tools-precommit
+    name: "pre-commit"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["pre-commit", "python", "git"]
+    paths:
+      - glob: "${PRE_COMMIT_HOME:-~/.cache/pre-commit}"
+        older_than_days: 7
+  # https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache
+  - id: infra-terraform
+    name: "Terraform provider downloads"
+    description:
+      en: "Manual cache review. Close the tool first; offline packages may need downloading again. Environments, installed tools and credentials are preserved."
+      pt-BR: "Revisão manual de cache. Feche a ferramenta; pacotes offline podem precisar de novo download. Ambientes, ferramentas instaladas e credenciais são preservados."
+      es: "Revisión manual de caché. Cierra la herramienta; los paquetes pueden necesitar descarga. Se preservan entornos, herramientas y credenciales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["terraform", "terragrunt"]
+    paths:
+      - glob: "${TF_PLUGIN_CACHE_DIR:-~/.terraform.d/plugin-cache}"
+        older_than_days: 7
+
+  # https://github.com/nodejs/corepack#environment-variables
+  - id: js-corepack
+    name: "Corepack"
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["node", "corepack", "yarn", "pnpm"]
+    paths:
+      - glob: "${COREPACK_HOME:-~/.cache/node/corepack}"
+        older_than_days: 7
+
+  # https://guides.rubygems.org/environment-variables/
+  - id: ruby-gem-specs
+    name: "RubyGems specifications"
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["ruby", "gem", "bundle"]
+    paths:
+      - glob: "${GEM_SPEC_CACHE:-~/.gem/specs}"
+        older_than_days: 7
+
+  # https://guides.rubygems.org/caching-and-vendoring/
+  - id: ruby-bundler
+    name: "Bundler cache"
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["ruby", "bundle"]
+    paths:
+      - glob: "${BUNDLE_USER_CACHE:-~/.bundle/cache}"
+        older_than_days: 7
+
+  # https://opam.ocaml.org/doc/man/opam-clean.html
+  - id: ocaml-opam
+    name: "opam downloads"
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: ["opam", "ocaml"]
+    paths:
+      - glob: "${OPAMROOT:-~/.opam}/download-cache"
+        older_than_days: 7
+
+  # https://docs.sonarsource.com/sonarqube-server/10.8/analyzing-source-code/analysis-parameters
+  - id: ci-sonar-cache
+    name: SonarScanner cache
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_tools_idle: [sonar, java]
+    paths:
+      - glob: "${SONAR_USER_HOME:-~/.sonar}/cache"
+        older_than_days: 7

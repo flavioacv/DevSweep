@@ -14,6 +14,7 @@ enum CleanupLog {
         var paths: [String]
         var errors: [String]
         var title: String? = nil
+        var bundleID: String? = nil
         var freedBytes: Int64? = nil
         var cancelled: Bool? = nil
         var completedItems: Int? = nil

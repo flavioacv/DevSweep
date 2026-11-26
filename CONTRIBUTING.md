@@ -120,6 +120,7 @@ match:
 | `method` | `delete` (default), `trash` or `run`. |
 | `run` | Commands for `method: run` (implied when `run` is present): a list of `[command, args…]`. Paths are still used to measure size. |
 | `then_delete` | With `run`: also delete the paths afterwards. |
+| `requires_tools_idle` | Explicit executable-name prefixes that must be absent for CLI-cache cleanup. Rechecks process inventory and open handles; uncertainty preserves the target. Cannot run commands or stop processes. Only home-safe paths or exact identity authorizations are accepted. |
 | `requires_apps_closed` | Explicit bundle identifiers that must be absent, including helpers. Preview and execution preserve the target when process identity or open-file checks are uncertain. Cannot be combined with `run` or non-empty `stop_processes`; the cleaner never quits these apps for you. |
 | `stop_processes` | Substrings of command lines to terminate before cleaning (daemons holding the files). |
 | `auto_suggest` | `false`: only shown in the Storage tab, never suggested proactively. Default `true`. |

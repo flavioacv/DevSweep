@@ -48,7 +48,7 @@ struct GeneralDashboard: View {
             .padding(18).frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 850, minHeight: 600)
-        .task(id: model.area.rawValue + (model.area == .applications ? model.uninstallApplication?.path ?? "" : "")) {
+        .task(id: model.area.rawValue + (model.area == .applications ? model.uninstallApplication?.path ?? "" : "") + (model.area == .maintenanceFiles ? model.maintenanceFileTask.rawValue : "")) {
             if model.area == .monitor {
                 while !Task.isCancelled {
                     await model.refreshMonitor()
@@ -58,7 +58,8 @@ struct GeneralDashboard: View {
                 await model.scan()
             }
         }
-        .onDisappear { model.cancel() }
+        .onDisappear { model.cancel(); model.stopMonitorRecording() }
+        .onChange(of: model.area) { _, area in if area != .monitor { model.stopMonitorRecording() } }
         .onChange(of: model.explorerMode) { _, mode in
             model.selected = []
             if mode == .largeFiles && model.explorerFilter.minimumBytes == 0 {
@@ -99,7 +100,14 @@ struct GeneralDashboard: View {
                     Button(tr("general.choose_folder")) { chooseFolder() }.disabled(model.scanning)
                 }
                 if model.area != .maintenance {
-                    Button(tr("general.export")) { export() }.disabled(model.scanning)
+                    if model.area == .monitor {
+                        Menu(tr("general.export")) {
+                            Button("JSON") { export() }
+                            Button("NDJSON") { export(ndjson: true) }.disabled(!model.hasMonitorHistory)
+                            if model.recordingMonitor { Button(tr("hardware.stop_recording")) { model.stopMonitorRecording() } }
+                            else { Button(tr("hardware.record")) { recordMonitor() } }
+                        }.disabled(model.monitor == nil)
+                    } else { Button(tr("general.export")) { export() }.disabled(model.scanning) }
                 }
             }
             if [.logs, .caches, .explorer, .installers, .projects, .external].contains(model.area) {
@@ -123,6 +131,13 @@ struct GeneralDashboard: View {
                     Text(tr("uninstall.notice")).font(.caption).foregroundStyle(.secondary)
                 } else { Text(tr("uninstall.open_help")).font(.caption).foregroundStyle(.secondary) }
             }
+            if model.area == .maintenanceFiles {
+                Picker(tr("general.maintenance"), selection: $model.maintenanceFileTask) {
+                    ForEach(MaintenanceTask.allCases.filter { $0.reviewsFiles || $0 == .launchAgents }) { Text($0.title).tag($0) }
+                }.disabled(model.scanning)
+                Text(tr("maintenance.files_notice")).font(.caption).foregroundStyle(.secondary)
+            }
+            if model.area == .orphans { Text(tr("orphans.notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .temporaries { Text(tr("hygiene.temp_notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .trash { Text(tr("hygiene.trash_notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .external { Text(tr("hygiene.external_notice")).font(.caption).foregroundStyle(.secondary) }
@@ -287,14 +302,17 @@ struct GeneralDashboard: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(task.title).font(.body.weight(.medium))
-                            Text(task.changesState ? tr("maintenance.explicit_action") : tr("maintenance.read_only"))
+                            Text(task.requiresAdmin ? tr("maintenance.admin") : task.changesState ? tr("maintenance.explicit_action") : tr("maintenance.read_only"))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
                         ActionButton(title: task.changesState ? tr("maintenance.run") : tr("maintenance.inspect"),
-                                     symbol: task.changesState ? "wrench" : "magnifyingglass", confirm: task.changesState,
+                                     symbol: task.changesState ? "wrench" : "magnifyingglass", confirm: task.changesState || task.requiresAdmin,
                                      busy: model.runningMaintenance == task) { Task { await model.runMaintenance(task) } }
                             .disabled(model.runningMaintenance != nil)
+                        if task.reviewsFiles || task == .launchAgents {
+                            Button(tr("maintenance.review_files")) { model.maintenanceFileTask = task; model.area = .maintenanceFiles }.controlSize(.small)
+                        }
                     }.padding(10).card()
                 }
                 if !model.maintenanceOutput.isEmpty {
@@ -318,10 +336,16 @@ struct GeneralDashboard: View {
         Task { await model.scan(force: true) }
     }
 
-    private func export() {
+    private func recordMonitor() {
+        let panel = NSSavePanel(); panel.nameFieldStringValue = "devsweep-monitor.ndjson"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        Task { do { try await model.startMonitorRecording(to: url) } catch { exportError = error.localizedDescription } }
+    }
+
+    private func export(ndjson: Bool = false) {
         do {
-            let data = try model.exportData()
-            let panel = NSSavePanel(); panel.nameFieldStringValue = "devsweep-" + model.area.rawValue + ".json"
+            let data = ndjson ? model.exportMonitorHistory() : try model.exportData()
+            let panel = NSSavePanel(); panel.nameFieldStringValue = "devsweep-" + model.area.rawValue + (ndjson ? ".ndjson" : ".json")
             if panel.runModal() == .OK, let url = panel.url { try data.write(to: url, options: .atomic) }
         } catch { exportError = error.localizedDescription }
     }
@@ -388,7 +412,7 @@ private struct GeneralMonitorView: View {
                             Text(Fmt.memory(process.rssBytes))
                         }.font(.caption.monospacedDigit())
                     }
-                    Text(tr("general.monitor_limits")).font(.caption2).foregroundStyle(.secondary)
+                    HardwarePanel(model: model)
                 }
             } else { ProgressView(tr("general.sampling")).padding(30) }
         }

@@ -51,8 +51,8 @@ final class GeneralMonitorTests: XCTestCase {
         XCTAssertNil(MaintenanceTask.program([:]))
         for task in MaintenanceTask.allCases {
             XCTAssertFalse(task.title.isEmpty)
-            XCTAssertEqual(task.changesState, task == .dns || task == .quickLook)
-            if task != .preferences && task != .launchAgents { XCTAssertNotNil(task.command) }
+            if [.launchAgents, .preferences, .spotlight, .loginItems, .verifyDisk, .sensorReport, .backups].contains(task) { XCTAssertFalse(task.changesState) }
+            if task.requiresAdmin { XCTAssertNotNil(task.command) }
         }
     }
 

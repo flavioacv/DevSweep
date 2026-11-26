@@ -147,7 +147,7 @@ struct StorageReviewView: View {
         let paths = Array(Set(target.paths)).sorted { $0.path < $1.path }
         // One read-only process snapshot per review; execution takes a fresh snapshot before deleting.
         let usage: ApplicationUsageSnapshot? = target.needsUsageCheck ? await Task.detached(priority: .utility) {
-            ApplicationUsageSnapshot.capture(includeApplications: !target.requiresAppsClosed.isEmpty)
+            ApplicationUsageSnapshot.capture(includeApplications: !target.requiresAppsClosed.isEmpty, includeTools: !target.requiresToolsIdle.isEmpty)
         }.value : nil
         await withTaskGroup(of: (URL, SizeMeasurement, CleanupGuardVerdict).self) { group in
             var pending = paths[...]

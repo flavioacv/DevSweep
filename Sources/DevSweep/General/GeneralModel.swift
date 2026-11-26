@@ -6,6 +6,12 @@ final class GeneralModel: ObservableObject {
     @Published var search = ""
     @Published var selected: Set<String> = []
     @Published var uninstallApplication: URL?
+    @Published var maintenanceFileTask: MaintenanceTask = .savedStates
+    @Published private(set) var monitoringError = ""
+    private var monitoringRecords: [Data] = []
+    @Published private(set) var recordingMonitor = false
+    private var recordingURL: URL?
+    private var recordingIdentity: FileIdentity?
     @Published var explorerMode: ExplorerMode = .folders
     @Published var explorerFilter = ExplorerFilter()
     @Published var explorerSort: ExplorerSort = .size
@@ -17,6 +23,12 @@ final class GeneralModel: ObservableObject {
     @Published private(set) var monitor: MonitorSnapshot?
     @Published private(set) var cpu: [Double]?
     @Published private(set) var network: [NetworkRate] = []
+    @Published private(set) var diskRates: [DiskIORate] = []
+    @Published private(set) var smartStatus: [String: String] = [:]
+    @Published private(set) var cpuHistory: [Double] = []
+    @Published private(set) var sustainedCPU = false
+    private var highCPUStart: Date?
+    private var lastSMART = Date.distantPast
     @Published private(set) var maintenanceOutput = ""
     @Published private(set) var runningMaintenance: MaintenanceTask?
     @Published private(set) var roots: [GeneralArea: URL] = [:]
@@ -74,6 +86,7 @@ final class GeneralModel: ObservableObject {
         let prefs = PrefsSnapshot.current()
         let selectedRoot = roots[area]
         let home = home
+        let maintenanceFileTask = maintenanceFileTask
         let uninstallApplication = uninstallApplication
         let applicationRoots = applicationRoots
         let scanRoot = root, mode = explorerMode, minimum = explorerFilter.minimumBytes
@@ -84,6 +97,7 @@ final class GeneralModel: ObservableObject {
         let key = area.rawValue + ":" + (selectedRoot?.path ?? "") + ":" + prefs.projectRoots.joined(separator: "|") + ":" + L10n.shared.language
             + ":" + (area == .explorer ? mode.rawValue + String(minimum) : "")
             + ":" + (area == .applications ? uninstallApplication?.path ?? "" : "")
+            + ":" + (area == .maintenanceFiles ? maintenanceFileTask.rawValue : "")
         if !force, let stored = cache[key], mounted, identity != nil, stored.3 == identity,
            Date().timeIntervalSince(stored.0) < 60 {
             let valid = await Task.detached(priority: .utility) {
@@ -98,6 +112,7 @@ final class GeneralModel: ObservableObject {
         scanning = true; selected = []; measurements = [:]; report = GeneralReport(); currentPath = root.path
         await withTaskCancellationHandler {
             let result = await Task.detached(priority: .utility) {
+                if area == .maintenanceFiles { return MaintenanceFiles.scan(maintenanceFileTask, home: home, control: flag) }
                 if area == .applications, let uninstallApplication {
                     return AppUninstall.scan(application: uninstallApplication, home: home, control: flag, roots: applicationRoots)
                 }
@@ -146,9 +161,55 @@ final class GeneralModel: ObservableObject {
 
     func refreshMonitor() async {
         let next = await Task.detached(priority: .utility) { SystemMonitor.capture() }.value
+        if let previous = monitor, next.date.timeIntervalSince(previous.date) > 15 { highCPUStart = nil; cpuHistory = [] }
         cpu = monitor.flatMap { SystemMonitor.cpuFractions(previous: $0.cpuTicks, current: next.cpuTicks) }
         network = SystemMonitor.networkRates(previous: monitor, current: next)
+        diskRates = HardwareMonitor.rates(previous: monitor?.hardware, current: next.hardware, seconds: monitor.map { next.date.timeIntervalSince($0.date) } ?? 0)
+        if let cpu, !cpu.isEmpty {
+            let mean = cpu.reduce(0, +) / Double(cpu.count)
+            cpuHistory = Array((cpuHistory + [mean]).suffix(120))
+            if mean > 0.9 { highCPUStart = highCPUStart ?? next.date } else { highCPUStart = nil }
+            sustainedCPU = highCPUStart.map { next.date.timeIntervalSince($0) >= 60 } ?? false
+        }
         monitor = next
+        if next.date.timeIntervalSince(lastSMART) >= 60 {
+            lastSMART = next.date
+            smartStatus = await Task.detached(priority: .utility) { HardwareMonitor.smart() }.value
+        }
+        if area == .monitor {
+            do {
+                let object = try JSONSerialization.jsonObject(with: exportData())
+                let line = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+                monitoringRecords = Array((monitoringRecords + [line]).suffix(120)); monitoringError = ""
+                if let url = recordingURL, let identity = recordingIdentity {
+                    try await Task.detached(priority: .utility) {
+                        guard FileIdentity.read(url) == identity else { throw CocoaError(.fileWriteUnknown) }
+                        let file = try FileHandle(forWritingTo: url)
+                        defer { try? file.close() }
+                        try file.seekToEnd(); try file.write(contentsOf: line + Data([10]))
+                    }.value
+                }
+            }
+            catch { monitoringError = error.localizedDescription; stopMonitorRecording() }
+        }
+    }
+
+    var hasMonitorHistory: Bool { !monitoringRecords.isEmpty }
+    func startMonitorRecording(to url: URL) async throws {
+        let initial = exportMonitorHistory()
+        let identity = try await Task.detached(priority: .utility) {
+            try initial.write(to: url, options: [.atomic])
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            guard let id = FileIdentity.read(url) else { throw CocoaError(.fileWriteUnknown) }
+            return id
+        }.value
+        recordingURL = url; recordingIdentity = identity; recordingMonitor = true
+    }
+    func stopMonitorRecording() { recordingURL = nil; recordingIdentity = nil; recordingMonitor = false }
+    func exportMonitorHistory() -> Data {
+        var result = Data()
+        for record in monitoringRecords { result.append(record); result.append(10) }
+        return result
     }
 
     func runMaintenance(_ task: MaintenanceTask) async {
@@ -160,7 +221,7 @@ final class GeneralModel: ObservableObject {
         maintenanceOutput = [result.stdout, result.stderr, result.status == 0 ? tr("maintenance.finished") : tr("maintenance.incomplete")]
             .filter { !$0.isEmpty }.joined(separator: "\n")
         if task.changesState {
-            let entry = CleanupLog.Entry(date: Date(), item: "maintenance-" + task.id, risk: "safe", method: "maintenance",
+            let entry = CleanupLog.Entry(date: Date(), item: "maintenance-" + task.id, risk: [.gatekeeper, .networkReset, .permissions].contains(task) ? "data_loss" : "safe", method: "maintenance",
                                          paths: [], errors: result.status == 0 ? [] : [maintenanceOutput], title: task.title)
             let directory = logDirectory
             await Task.detached { CleanupLog.record(entry, in: directory) }.value
@@ -177,6 +238,10 @@ final class GeneralModel: ObservableObject {
                 "volumes": monitor.volumes.map { ["path": $0.path, "total": $0.total, "free": $0.free, "read_only": $0.readOnly] as [String: Any] },
                 "network": network.map { ["interface": $0.id, "received_bytes_per_second": $0.received, "sent_bytes_per_second": $0.sent] as [String: Any] },
                 "processes": monitor.processes.map { ["pid": $0.pid, "name": $0.exeName, "cpu_percent": $0.cpu, "rss_bytes": $0.rssBytes] as [String: Any] }]
+            if let cache = monitor.system.memCache { output["memory_cache"] = cache }
+            output["hardware"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(monitor.hardware))
+            output["disk_rates"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(diskRates))
+            output["smart"] = smartStatus; output["cpu_history"] = cpuHistory; output["sustained_cpu"] = sustainedCPU
             if let battery = monitor.battery { output["battery_fraction"] = battery } else { output["battery_fraction"] = NSNull() }
             if let swap = monitor.swap { output["swap_bytes"] = swap } else { output["swap_bytes"] = NSNull() }
             return try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted, .sortedKeys])

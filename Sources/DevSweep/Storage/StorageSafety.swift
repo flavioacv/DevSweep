@@ -5,17 +5,23 @@ struct ApplicationUsageSnapshot: Sendable {
     /// Nil means that the process inventory or an app's identity could not be verified.
     let runningBundleIDs: Set<String>?
     let handles: ShellResult
+    var toolExecutables: Set<String>? = nil
 
-    static func capture(includeApplications: Bool) -> ApplicationUsageSnapshot {
+    static func capture(includeApplications: Bool, includeTools: Bool = false) -> ApplicationUsageSnapshot {
         let running: Set<String>?
-        if includeApplications {
+        var tools: Set<String>?
+        if includeApplications || includeTools {
             let result = Shell.run("/bin/ps", ["-axww", "-o", "pid=,ppid=,uid=,rss=,%cpu=,etime=,command="], timeout: 15)
-            running = bundleIDs(from: result)
+            running = includeApplications ? bundleIDs(from: result) : nil
+            let parsed = ProcessScanner.parse(result.stdout)
+            if result.status == 0 && !parsed.isEmpty && parsed.count == result.stdout.split(separator: "\n").count {
+                tools = Set(parsed.filter { $0.uid == getuid() }.map { $0.exeName.lowercased() })
+            }
         } else {
             running = nil
         }
         let handles = Shell.run("/usr/sbin/lsof", ["-nP", "-a", "-u", String(getuid()), "-Fpn"], timeout: 15)
-        return ApplicationUsageSnapshot(runningBundleIDs: running, handles: handles)
+        return ApplicationUsageSnapshot(runningBundleIDs: running, handles: handles, toolExecutables: tools)
     }
 
     static func bundleIDs(
@@ -46,9 +52,22 @@ enum StorageSafety {
     static func check(
         _ path: URL, target: StorageTarget, usage: ApplicationUsageSnapshot? = nil, now: Date = Date()
     ) -> CleanupGuardVerdict {
+        if let service = target.serviceRemovalContext, !service.validates() { return .unverified }
+        if let days = target.recursiveAgeDays {
+            let walk = DirectoryWalker.walk(path, depth: 4, control: ScanControl(), reportDepthLimit: true)
+            guard walk.complete else { return .unverified }
+            let cutoff = now.addingTimeInterval(-Double(days) * 86400)
+            if (walk.files + walk.directories).contains(where: { (PathGlob.modificationDate($0) ?? now) >= cutoff }) { return .recent }
+        }
+        if let context = target.orphanRemovalContext, !context.validates() { return .unverified }
         if let context = target.appRemovalContext, !context.validates() { return .unverified }
         if let authorization = target.pathAuthorizations[path.path], !authorization.validates(path) { return .unverified }
-        if !target.requiresAppsClosed.isEmpty || target.pathRules[path.path] != nil || !target.pathAuthorizations.isEmpty {
+        if !target.requiresToolsIdle.isEmpty {
+            if target.pathAuthorizations[path.path] == nil && !SafeDelete.isAllowed(path) { return .unverified }
+            guard let tools = usage?.toolExecutables else { return .unverified }
+            if tools.contains(where: { tool in target.requiresToolsIdle.contains { tool.hasPrefix($0.lowercased()) } }) { return .inUse }
+        }
+        if !target.requiresToolsIdle.isEmpty || !target.requiresAppsClosed.isEmpty || target.pathRules[path.path] != nil || !target.pathAuthorizations.isEmpty {
             let literal = path.standardizedFileURL.path
             guard path.resolvingSymlinksInPath().standardizedFileURL.path == literal,
                   let attributes = try? FileManager.default.attributesOfItem(atPath: path.path) else { return .unverified }

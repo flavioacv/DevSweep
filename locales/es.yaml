@@ -407,3 +407,7 @@ diagnostics.unavailable: "No disponible o aún recopilando: {metrics}"
 diagnostics.notice: "Umbrales: CPU >90% durante 60s; espacio libre ≤10% (crítico ≤5%); capacidad de batería <80%. Presión y SMART usan lecturas del sistema. Sin puntuación de salud ni reparaciones automáticas."
 diagnostics.thermal_label: "Presión térmica"
 diagnostics.pressure_label: "Presión de memoria"
+
+references.notice: "Referencias de solo lectura a esta app en archivos compatibles de shell/MCP. Solo ubicaciones; los comentarios también pueden coincidir. Revise manualmente. La configuración y los tokens nunca se editan ni exportan."
+references.partial: "La búsqueda de referencias quedó incompleta. Algunos archivos de configuración no pudieron analizarse."
+references.location: "{path} · línea {line}"

@@ -129,6 +129,15 @@ struct GeneralDashboard: View {
                 if model.uninstallApplication != nil {
                     Button(tr("uninstall.back")) { model.uninstallApplication = nil }
                     Text(tr("uninstall.notice")).font(.caption).foregroundStyle(.secondary)
+                    Text(tr("references.notice")).font(.caption).foregroundStyle(.secondary)
+                    if !model.report.referencesComplete { Text(tr("references.partial")).font(.caption).foregroundStyle(.orange) }
+                    ForEach(model.report.references) { reference in
+                        HStack {
+                            Text(tr("references.location", ["path": reference.path, "line": reference.line])).font(.caption).textSelection(.enabled)
+                            Spacer()
+                            Button(tr("storage.show_in_finder")) { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: reference.path)]) }
+                        }
+                    }
                 } else { Text(tr("uninstall.open_help")).font(.caption).foregroundStyle(.secondary) }
             }
             if model.area == .installers { Text(tr("installer.notice")).font(.caption).foregroundStyle(.secondary) }

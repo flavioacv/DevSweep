@@ -112,7 +112,7 @@ final class GeneralModel: ObservableObject {
             + ":" + (area == .explorer ? mode.rawValue + String(minimum) : "")
             + ":" + (area == .applications ? uninstallApplication?.path ?? "" : "")
             + ":" + (area == .maintenanceFiles ? maintenanceFileTask.rawValue : "")
-        if !force, let stored = cache[key], mounted, identity != nil, stored.3 == identity,
+        if !force, !(area == .applications && uninstallApplication != nil), let stored = cache[key], mounted, identity != nil, stored.3 == identity,
            Date().timeIntervalSince(stored.0) < 60 {
             let valid = await Task.detached(priority: .utility) {
                 stored.1.entries.allSatisfy { entry in
@@ -284,6 +284,11 @@ final class GeneralModel: ObservableObject {
         var output: [String: Any] = ["area": area.rawValue, "scan_complete": report.complete,
             "measurements_complete": fullyMeasured, "inspected": report.inspected,
             "issues": report.issues + measurementIssues, "entries": entries]
+        if area == .applications, uninstallApplication != nil {
+            output["config_references"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(report.references))
+            output["config_references_complete"] = report.referencesComplete
+            output["config_reference_issues"] = report.referenceIssues
+        }
         if let estimate = fileSpaceEstimate {
             output["file_space_estimate"] = ["allocated_unique_bytes": estimate.allocatedBytes, "potential_after_trash_upper_bound": estimate.potentialAfterTrashBytes,
                 "files": estimate.files, "unique_inodes": estimate.uniqueFiles, "inodes_with_other_links": estimate.linksOutsideSelection,

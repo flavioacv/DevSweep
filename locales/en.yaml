@@ -408,3 +408,7 @@ diagnostics.unavailable: "Unavailable or still sampling: {metrics}"
 diagnostics.notice: "Thresholds: CPU >90% for 60s; free space ≤10% (critical ≤5%); battery capacity <80%. Pressure and SMART use OS readings. No health score or automatic repairs."
 diagnostics.thermal_label: "Thermal pressure"
 diagnostics.pressure_label: "Memory pressure"
+
+references.notice: "Read-only references to this app in supported shell/MCP configuration files. Locations only; comments may also match. Review manually. Settings and tokens are never edited or exported."
+references.partial: "Reference search was incomplete. Some configuration files could not be inspected."
+references.location: "{path} · line {line}"

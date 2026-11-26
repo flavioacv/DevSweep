@@ -54,6 +54,9 @@ struct GeneralReport: Sendable {
     var issues: [String] = []
     var complete = true
     var inspected = 0
+    var references: [ConfigReference] = []
+    var referencesComplete = true
+    var referenceIssues: [String] = []
 }
 
 enum GeneralScanner {
@@ -141,10 +144,25 @@ enum GeneralScanner {
         case .projects:
             guard prefs.workspacesConfirmed else { report.issues = [tr("general.confirm_projects")]; report.complete = false; return report }
             let roots = selectedRoot.map { [$0] } ?? prefs.projectRoots.map { URL(fileURLWithPath: expandTilde($0)).resolvingSymlinksInPath() }
-            for root in roots {
+            var pending = roots
+            var queued = Set(roots.map(\.path))
+            let discoveryDeadline = Date().addingTimeInterval(30)
+            var visited = Set<String>(), seen = Set<String>()
+            while !pending.isEmpty {
+                if control.isCancelled || Date() > discoveryDeadline { report.complete = false; report.issues.append(tr("general.scan_limited")); break }
+                let root = pending.removeFirst()
+                guard visited.insert(root.path).inserted else { continue }
+                if visited.count > 128 { report.complete = false; report.issues.append(tr("general.scan_limited")); break }
                 let walk = DirectoryWalker.walk(root, depth: 6, control: control, skip: [".git"], pruneNames: artifactNames)
                 absorb(walk, into: &report)
-                for folder in walk.directories where artifactNames.contains(folder.lastPathComponent) {
+                for project in [root] + walk.directories where PathGlob.exists(project.appendingPathComponent(".git").path) {
+                    if control.isCancelled || Date() > discoveryDeadline { report.complete = false; report.issues.append(tr("general.scan_limited")); break }
+                    for linked in WorktreeDiscovery.linked(to: project, roots: roots) where !queued.contains(linked.path) {
+                        if queued.count >= 128 { report.complete = false; report.issues.append(tr("general.scan_limited")); break }
+                        queued.insert(linked.path); pending.append(linked)
+                    }
+                }
+                for folder in walk.directories where artifactNames.contains(folder.lastPathComponent) && seen.insert(folder.path).inserted {
                     guard let project = projectRoot(folder, within: root) else { continue }
                     var item = entry(folder, root: root, area: area, home: home)
                     var target = item.target

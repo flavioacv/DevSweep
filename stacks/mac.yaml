@@ -1,6 +1,11 @@
 # User-scoped Mac cleanup. Never select entire browser or application profiles.
 # Cache layout: https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md
 # Electron cache folders: https://www.electronjs.org/docs/latest/api/app/
+# Firefox profiles: https://firefox-source-docs.mozilla.org/toolkit/profile/index.html
+# Firefox HTTP cache: https://firefox-source-docs.mozilla.org/networking/cache2/doc.html
+# Discord cache: https://support.discord.com/hc/en-us/articles/31623498041623-Discord-Troubleshooting-Guide
+# Discord logs: https://support.discord.com/hc/en-us/articles/1500006052822-How-to-Report-a-Bug
+# Zoom logs: https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0060047
 stack:
   id: mac
   name: Mac
@@ -119,5 +124,74 @@ storage:
     method: trash
     paths:
       - glob: ~/Library/Logs/DiagnosticReports/*.{ips,crash,hang,spin}
+        files_only: true
+        older_than_days: 30
+
+  - id: mac-firefox-cache
+    name:
+      en: Firefox HTTP cache
+      pt-BR: Cache HTTP do Firefox
+      es: Caché HTTP de Firefox
+    description:
+      en: "Only cache2 under standard local profiles. Close Firefox, Developer Edition and Nightly first. Cookies, saved passwords, bookmarks and profile settings are kept; web resources download again."
+      pt-BR: "Apenas cache2 dos perfis locais padrão. Feche o Firefox, Developer Edition e Nightly antes. Cookies, senhas salvas, favoritos e configurações dos perfis são preservados; recursos web serão baixados novamente."
+      es: "Solo cache2 de perfiles locales estándar. Cierra Firefox, Developer Edition y Nightly primero. Se conservan cookies, contraseñas guardadas, marcadores y ajustes; los recursos web se descargan otra vez."
+    risk: redownload
+    auto_suggest: false
+    requires_apps_closed: [org.mozilla.firefox, org.mozilla.firefoxdeveloperedition, org.mozilla.nightly]
+    paths:
+      - ~/Library/Caches/Firefox/Profiles/*/cache2
+
+  - id: mac-discord-cache
+    name:
+      en: Discord web and rendering caches
+      pt-BR: Caches web e de renderização do Discord
+      es: Cachés web y de renderizado de Discord
+    description:
+      en: "Close Discord and its test channels first. Only Cache, Code Cache and GPUCache in the standard Discord profile are removed. Sessions, settings, local storage and downloaded modules are kept."
+      pt-BR: "Feche o Discord e seus canais de teste antes. Remove apenas Cache, Code Cache e GPUCache do perfil padrão do Discord. Sessões, configurações, armazenamento local e módulos baixados são preservados."
+      es: "Cierra Discord y sus canales de prueba primero. Solo elimina Cache, Code Cache y GPUCache del perfil estándar de Discord. Se conservan sesiones, ajustes, almacenamiento local y módulos descargados."
+    risk: redownload
+    auto_suggest: false
+    requires_apps_closed: [com.hnc.Discord, com.hnc.DiscordPTB, com.hnc.DiscordCanary]
+    paths:
+      - ~/Library/Application Support/discord/{Cache,Code Cache,GPUCache}
+
+  - id: mac-discord-old-logs
+    name:
+      en: Discord logs older than 30 days
+      pt-BR: Logs do Discord com mais de 30 dias
+      es: Registros de Discord de más de 30 días
+    description:
+      en: "Moves old .log files in the standard Discord profile and its logs folder to Trash after Discord closes. Historical diagnostics cannot be regenerated; recent files, settings and downloaded modules are kept."
+      pt-BR: "Move arquivos .log antigos do perfil padrão do Discord e da pasta logs para a Lixeira após fechar o Discord. Diagnósticos históricos não são regenerados; arquivos recentes, configurações e módulos baixados são preservados."
+      es: "Mueve archivos .log antiguos del perfil estándar de Discord y su carpeta logs a la Papelera después de cerrar Discord. Los diagnósticos históricos no se regeneran; se conservan archivos recientes, ajustes y módulos descargados."
+    risk: data_loss
+    auto_suggest: false
+    method: trash
+    requires_apps_closed: [com.hnc.Discord, com.hnc.DiscordPTB, com.hnc.DiscordCanary]
+    paths:
+      - glob: ~/Library/Application Support/discord/*.log
+        files_only: true
+        older_than_days: 30
+      - glob: ~/Library/Application Support/discord/logs/*.log
+        files_only: true
+        older_than_days: 30
+
+  - id: mac-zoom-old-logs
+    name:
+      en: Zoom logs older than 30 days
+      pt-BR: Logs do Zoom com mais de 30 dias
+      es: Registros de Zoom de más de 30 días
+    description:
+      en: "Moves old .log files directly inside the user's zoom.us log folder to Trash after Zoom closes. Historical troubleshooting logs cannot be regenerated. Recordings, chat files, settings and system logs are kept."
+      pt-BR: "Move arquivos .log antigos diretamente na pasta zoom.us de logs do usuário para a Lixeira após fechar o Zoom. Logs históricos de diagnóstico não são regenerados. Gravações, arquivos de chat, configurações e logs do sistema são preservados."
+      es: "Mueve archivos .log antiguos directamente en la carpeta zoom.us de registros del usuario a la Papelera después de cerrar Zoom. Los registros históricos no se regeneran. Se conservan grabaciones, archivos de chat, ajustes y registros del sistema."
+    risk: data_loss
+    auto_suggest: false
+    method: trash
+    requires_apps_closed: [us.zoom.xos]
+    paths:
+      - glob: ~/Library/Logs/zoom.us/*.log
         files_only: true
         older_than_days: 30

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 struct ShellResult: Sendable {
@@ -38,7 +39,9 @@ enum Shell {
     private final class Buffer: @unchecked Sendable { var data = Data() }
 
     @discardableResult
-    static func run(_ executable: String, _ args: [String], timeout: TimeInterval = 120) -> ShellResult {
+    static func run(_ executable: String, _ args: [String], timeout: TimeInterval = 120,
+                    shouldCancel: @escaping @Sendable () -> Bool = { false }) -> ShellResult {
+        if shouldCancel() { return ShellResult(status: -2, stdout: "", stderr: tr("general.cancelled")) }
         let process = Process()
         if executable.hasPrefix("/") {
             process.executableURL = URL(fileURLWithPath: executable)
@@ -70,10 +73,19 @@ enum Shell {
         group.enter()
         DispatchQueue.global().async { errBuf.data = err.fileHandleForReading.readDataToEndOfFile(); group.leave() }
 
-        DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-            if process.isRunning { process.terminate() }
+        let deadline = Date().addingTimeInterval(timeout)
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global())
+        timer.schedule(deadline: .now() + 0.1, repeating: 0.1)
+        timer.setEventHandler {
+            guard process.isRunning, Date() >= deadline || shouldCancel() else { return }
+            process.terminate()
+            DispatchQueue.global().asyncAfter(deadline: .now() + 1) {
+                if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            }
         }
+        timer.resume()
         process.waitUntilExit()
+        timer.cancel()
         // Daemons forked by the tool may keep the pipe open; don't wait on them forever.
         _ = group.wait(timeout: .now() + 5)
 

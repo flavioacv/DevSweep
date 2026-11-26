@@ -14,6 +14,10 @@ struct DevSweepApp: App {
             MenuBarLabel(model: model)
         }
         .menuBarExtraStyle(.window)
+        Window("DevSweep", id: "general") {
+            GeneralDashboard().environmentObject(model)
+        }
+        .defaultSize(width: 1000, height: 740)
     }
 }
 

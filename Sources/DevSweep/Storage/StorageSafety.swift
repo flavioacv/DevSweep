@@ -46,7 +46,8 @@ enum StorageSafety {
     static func check(
         _ path: URL, target: StorageTarget, usage: ApplicationUsageSnapshot? = nil, now: Date = Date()
     ) -> CleanupGuardVerdict {
-        if !target.requiresAppsClosed.isEmpty || target.pathRules[path.path] != nil {
+        if let authorization = target.pathAuthorizations[path.path], !authorization.validates(path) { return .unverified }
+        if !target.requiresAppsClosed.isEmpty || target.pathRules[path.path] != nil || !target.pathAuthorizations.isEmpty {
             let literal = path.standardizedFileURL.path
             guard path.resolvingSymlinksInPath().standardizedFileURL.path == literal,
                   let attributes = try? FileManager.default.attributesOfItem(atPath: path.path) else { return .unverified }
@@ -68,6 +69,11 @@ enum StorageSafety {
                 let openPath = String(line.dropFirst())
                 if openPath == literal || openPath.hasPrefix(literal + "/") { return .inUse }
             }
+        }
+        if target.protectNestedRepositories {
+            let nested = Shell.run("/usr/bin/find", [path.path, "-name", ".git", "-print", "-quit"], timeout: 10)
+            guard nested.status == 0 else { return .unverified }
+            if !nested.stdout.isEmpty { return .tracked }
         }
         if let project = target.projectRootsByPath[path.path] {
             return ProjectCleanupGuard.check(path, projectRoot: project, handles: usage?.handles)

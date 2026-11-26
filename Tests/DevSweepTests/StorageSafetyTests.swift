@@ -222,7 +222,7 @@ final class MacCleanupDefinitionTests: XCTestCase {
 
     func testMacCatalogIsManualAndHistoricalLogsRequireConfirmation() {
         let definitions = TestSupport.definitions.storage.filter { $0.stack.id == "mac" }
-        XCTAssertEqual(definitions.count, 7)
+        XCTAssertEqual(definitions.count, 11)
         for spec in definitions {
             XCTAssertEqual(spec.definition.autoSuggest, false)
             if spec.definition.id.contains("cache") {

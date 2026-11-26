@@ -29,6 +29,27 @@ Available in English, Português (Brasil) and Español.
 - **Safe by default.** Every item is labeled *Safe*, *Re-downloads* or *Deletes data*. Items that delete data are never cleaned in bulk and ask for confirmation.
 - **Keeps itself up to date.** When a new version is out, you get an update card with a link to the changelog and a one-click install.
 
+## General workspace
+
+Open **General workspace** from the menu bar to use the larger window. The existing developer scans and recommendations remain available in the menu.
+
+| Area | Available behavior |
+|---|---|
+| Logs | Discover logs older than 30 days in user Logs, application Logs and sandbox containers, without requiring an app-specific rule. |
+| Caches | Find recognizable cache directories and `CACHEDIR.TAG` folders. Unknown owners without a valid cache tag remain analysis-only; identified owners must be closed before removal. |
+| Projects | Discover 34 artifact folder names across confirmed workspaces using project markers. Git-tracked content, nested repositories and open artifacts are protected. These are manual candidates, not a claim that every artifact is unused. |
+| Storage explorer | Browse folders and local external volumes, sort by allocated size, search, reveal in Finder and review selected items. |
+| Installers | Find macOS/mobile installer files and ZIPs with installer entries, inspecting a bounded central directory without extraction. |
+| Applications | Inventory installed application bundles and move selected third-party bundles to Trash. Application Support, preferences and personal data are preserved. Apple apps remain analysis-only. |
+| Maintenance | Inspect launch agents, preference-file validity, Spotlight, login items and filesystem integrity. DNS resolver cache and QuickLook cache refresh are separate confirmed actions. |
+| Monitoring | Refresh CPU per core, memory, swap, load, uptime, local volume capacity, network rates per interface, processes, thermal pressure and battery charge when available. |
+
+Searches support cancellation, bounded traversal and explicit partial results. Measurements that time out or fail are not reported as zero or eligible for removal. Results and monitoring snapshots can be exported as JSON. Folder scans do not follow symlinks or cross mounts and skip online-only cloud files.
+
+General removal always requires selection, review and confirmation, uses Trash and shares cleanup progress and history. Scanned files, parents and roots are revalidated by identity before removal; modified regular files are preserved. Protected home roots, shell configuration and credential paths cannot be removed from this window. These observations do not lock the filesystem against concurrent changes. Allocated sizes are estimates and can count shared APFS blocks more than once.
+
+This is the general foundation, not complete Mole parity: GPU/SMART, disk transfer rates, fan/temperature sensors, battery health/cycles, orphan-service removal, firmware, backup cleanup and privileged or automatic repairs are not implemented. No maintenance task requests administrator privileges or repairs preferences automatically.
+
 ## Install
 
 ```bash
@@ -155,11 +176,13 @@ space on APFS or after moving files to Trash.
 
 ## Mac cleanup
 
-The **Mac** group in Storage starts with disk caches for standard Chrome, Chromium, Edge and Brave
-profiles, Slack web/rendering caches (including its sandboxed layout), Slack `.log` files older
-than 30 days and user crash reports older than 30 days. These categories are manual: they do not
-join automatic recommendations. Browser cookies, passwords, history, Slack sessions and local
-storage are outside their path rules. Custom browser profile locations are not scanned.
+The **Mac** group in Storage includes disk caches for standard Chrome, Chromium, Edge and Brave
+profiles; Firefox HTTP caches (`cache2` in standard local profiles); Slack and Discord web/rendering
+caches; Slack, Discord and Zoom `.log` files older than 30 days; and user crash reports older than
+30 days. These categories are manual: they do not join automatic recommendations. Browser cookies,
+passwords, bookmarks and history, application sessions, local storage, Discord modules, Zoom
+recordings and chat files are outside their path rules. Custom browser profile locations are not
+scanned. Discord test-channel data and nested Zoom logs are outside this increment's scope.
 
 Close the owning application before cleaning its cache. Review checks bundle identifiers (including
 helpers and renamed app bundles) and open files; execution checks again. An uncertain check keeps
@@ -169,6 +192,11 @@ historical diagnostics cannot be regenerated. A file that becomes recent after s
 Cache layout references: [Chromium user/cache directories](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/user_data_dir.md)
 and [Electron session storage](https://www.electronjs.org/docs/latest/api/app/). The rules select only
 named cache subdirectories; they never sweep an entire application profile or system log tree.
+Additional references: [Firefox profile directories](https://firefox-source-docs.mozilla.org/toolkit/profile/index.html),
+[Firefox HTTP cache](https://firefox-source-docs.mozilla.org/networking/cache2/doc.html),
+[Discord cache troubleshooting](https://support.discord.com/hc/en-us/articles/31623498041623-Discord-Troubleshooting-Guide),
+[Discord debug logs](https://support.discord.com/hc/en-us/articles/1500006052822-How-to-Report-a-Bug)
+and [Zoom client logs](https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0060047).
 
 ## Delivery checklist
 
@@ -186,6 +214,10 @@ check of that feature in the packaged app; a successful build alone does not cou
 | Slack web/rendering caches | Yes | Yes | Pending |
 | Slack logs older than 30 days | Yes | Yes | Pending |
 | User crash reports older than 30 days | Yes | Yes | Pending |
+| Firefox HTTP cache | Yes | Yes | Pending |
+| Discord web/rendering caches | Yes | Yes | Pending |
+| Discord logs older than 30 days | Yes | Yes | Pending |
+| Zoom logs older than 30 days | Yes | Yes | Pending |
 | More app caches, cloud/Office, virtualization and orphan cleanup | Planned | Pending | Pending |
 | Additional development stacks and artifact types | Planned | Pending | Pending |
 | Disk explorer and large-file review | Planned | Pending | Pending |

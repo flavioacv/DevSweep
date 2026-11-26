@@ -8,6 +8,7 @@ enum MenuTab: String, CaseIterable, Identifiable {
 
 struct MenuView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.openWindow) private var openWindow
     @State private var tab: MenuTab = .suggestions
     @State private var showingSettings = false
     @AppStorage(Prefs.Key.workspacesConfirmed) private var workspacesConfirmed = false
@@ -51,8 +52,14 @@ struct MenuView: View {
                 Divider()
                 FooterView()
             }
+            Button {
+                openWindow(id: "general")
+                NSApp.activate(ignoringOtherApps: true)
+            } label: { Label(tr("general.open"), systemImage: "macwindow") }
+            .buttonStyle(.borderless)
+            .padding(8)
         }
-        .frame(width: 470, height: 640)
+        .frame(width: 470, height: 680)
         .id(model.languageRevision)
         .onAppear { model.popoverOpened() }
     }

@@ -12,7 +12,8 @@ enum SizeCalculator {
     static func size(of paths: [URL]) -> Int64 { measure(paths).bytes }
 
     /// Allocated size on disk. Incomplete output must never masquerade as an empty folder.
-    static func measure(_ paths: [URL]) -> SizeMeasurement {
+    static func measure(_ paths: [URL], timeout: TimeInterval = 900,
+                        shouldCancel: @escaping @Sendable () -> Bool = { false }) -> SizeMeasurement {
         var existing: [String] = []
         var results: [SizeMeasurement] = []
         for path in Set(paths.map(\.path)).sorted() {
@@ -29,8 +30,9 @@ enum SizeCalculator {
             }
         }
         for start in stride(from: 0, to: existing.count, by: 200) {
+            if shouldCancel() { results.append(SizeMeasurement(bytes: 0, state: .unavailable, errors: [tr("general.cancelled")])); break }
             let chunk = Array(existing[start..<min(start + 200, existing.count)])
-            results.append(parse(Shell.run("/usr/bin/du", ["-sk"] + chunk, timeout: 900), expectedPaths: chunk.count))
+            results.append(parse(Shell.run("/usr/bin/du", ["-sk"] + chunk, timeout: timeout, shouldCancel: shouldCancel), expectedPaths: chunk.count))
         }
         return combine(results)
     }
@@ -83,6 +85,9 @@ enum Cleaner {
         case .trash:
             for url in paths where PathGlob.exists(url.path) {
                 do {
+                    if let authorization = target.pathAuthorizations[url.path], !authorization.validates(url) {
+                        errors.append(tr("cleanup.protected_unknown", ["path": url.path])); continue
+                    }
                     try FileManager.default.trashItem(at: url, resultingItemURL: nil)
                 } catch {
                     errors.append("\(url.lastPathComponent): \(error.localizedDescription)")
@@ -132,9 +137,12 @@ enum SafeDelete {
     ]
 
     /// Home paths retain protected-root checks; external paths require exact project authorization.
-    static func isAllowed(_ url: URL, authorizedProjectPaths: [URL] = []) -> Bool {
+    static func protectsShellConfiguration(_ name: String) -> Bool {
+        protectedPrefixes.contains { name == $0 || name.hasPrefix($0) }
+    }
+
+    static func isAllowed(_ url: URL, authorizedProjectPaths: [URL] = [], home: String = NSHomeDirectory()) -> Bool {
         let path = url.standardizedFileURL.path
-        let home = NSHomeDirectory()
         guard path.hasPrefix(home + "/") else {
             // Reject links (including linked ancestors) that now redirect a previously scanned artifact.
             let resolved = url.resolvingSymlinksInPath().standardizedFileURL.path
@@ -146,7 +154,7 @@ enum SafeDelete {
         let parts = path.dropFirst(home.count + 1).split(separator: "/").map(String.init)
         guard !parts.isEmpty else { return false }
         if parts.count == 1 && protectedTopLevel.contains(parts[0]) { return false }
-        if protectedPrefixes.contains(where: { parts[0] == $0 || parts[0].hasPrefix($0) }) { return false }
+        if protectsShellConfiguration(parts[0]) { return false }
         if parts.count == 2 && parts[0] == "Library" && protectedInLibrary.contains(parts[1]) { return false }
         return true
     }

@@ -180,12 +180,12 @@ struct PathSpec: Decodable, Sendable {
         case fileNotContains = "file_not_contains"
     }
 
-    init(glob: String, keepNewest: Int? = nil, onlyNewest: Int? = nil, sortBy: String? = nil, versionPattern: String? = nil) {
+    init(glob: String, olderThanDays: Int? = nil, filesOnly: Bool? = nil, keepNewest: Int? = nil, onlyNewest: Int? = nil, sortBy: String? = nil, versionPattern: String? = nil) {
         self.glob = glob
         self.exclude = nil
         self.nameMatches = nil
-        self.olderThanDays = nil
-        self.filesOnly = nil
+        self.olderThanDays = olderThanDays
+        self.filesOnly = filesOnly
         self.keepNewest = keepNewest
         self.onlyNewest = onlyNewest
         self.sortBy = sortBy

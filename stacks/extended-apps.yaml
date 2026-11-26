@@ -139,6 +139,7 @@ storage:
     paths:
       - "~/Library/Caches/notion.id"
       - "~/Library/Containers/notion.id/Data/Library/Caches/notion.id"
+      - "~/Library/Application Support/Notion/Partitions/*/{Cache,Code Cache}"
   - id: app-cache-obsidian
     name: "Obsidian — cache"
     description:
@@ -217,6 +218,7 @@ storage:
     paths:
       - "~/Library/Caches/com.postmanlabs.mac"
       - "~/Library/Containers/com.postmanlabs.mac/Data/Library/Caches/com.postmanlabs.mac"
+      - "~/Library/Application Support/Postman/Partitions/*/{Cache,Code Cache}"
   - id: app-cache-insomnia
     name: "Insomnia — cache"
     description:
@@ -334,3 +336,168 @@ storage:
     paths:
       - "~/Library/Caches/com.vmware.fusion"
       - "~/Library/Containers/com.vmware.fusion/Data/Library/Caches/com.vmware.fusion"
+  - id: app-cache-arc
+    name: "Arc — cache"
+    description:
+      en: "Disposable cache namespace only. Close Arc first. Spaces, profiles, cookies, passwords and history are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o Arc antes. Espaços, perfis, cookies, senhas e histórico são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra Arc primero. Se conservan espacios, perfiles, cookies, contraseñas e historial."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["company.thebrowser.Browser"]
+    paths:
+      - "~/Library/Caches/company.thebrowser.Browser"
+      - "~/Library/Caches/Arc/User Data/{Default,Profile *,Guest Profile}/Cache"
+  - id: app-cache-vivaldi
+    name: "Vivaldi — cache"
+    description:
+      en: "Disposable cache namespace only. Close Vivaldi first. Profiles, cookies, passwords and history are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o Vivaldi antes. Perfis, cookies, senhas e histórico são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra Vivaldi primero. Se conservan perfiles, cookies, contraseñas e historial."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.vivaldi.Vivaldi"]
+    paths:
+      - "~/Library/Caches/com.vivaldi.Vivaldi"
+      - "~/Library/Caches/Vivaldi/{Default,Profile *,Guest Profile}/Cache"
+  - id: app-cache-dia
+    name: "Dia — cache"
+    description:
+      en: "Disposable cache namespace only. Close Dia first. Profiles, cookies, passwords and history are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o Dia antes. Perfis, cookies, senhas e histórico são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra Dia primero. Se conservan perfiles, cookies, contraseñas e historial."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["company.thebrowser.dia"]
+    paths:
+      - "~/Library/Caches/company.thebrowser.dia"
+      - "~/Library/Caches/Dia/User Data/{Default,Profile *,Guest Profile}/Cache"
+  - id: app-cache-whatsapp
+    name: "WhatsApp — cache"
+    description:
+      en: "Disposable cache namespace only. Close WhatsApp first. Messages, media and sessions are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o WhatsApp antes. Mensagens, mídias e sessões são preservadas."
+      es: "Solo la carpeta de caché descartable. Cierra WhatsApp primero. Se conservan mensajes, archivos y sesiones."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["net.whatsapp.WhatsApp"]
+    paths:
+      - "~/Library/Caches/net.whatsapp.WhatsApp"
+      - "~/Library/Containers/net.whatsapp.WhatsApp/Data/Library/Caches/net.whatsapp.WhatsApp"
+  - id: app-cache-claude-desktop
+    name: "Claude Desktop — cache"
+    description:
+      en: "Disposable rendering and bundle cache only. Close Claude first. Sessions, MCP configuration and VM bundles are preserved."
+      pt-BR: "Somente cache descartável e de renderização. Feche o Claude antes. Sessões, configuração MCP e VMs são preservadas."
+      es: "Solo caché descartable y de renderizado. Cierra Claude primero. Se conservan sesiones, configuración MCP y VMs."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.anthropic.claudefordesktop"]
+    paths:
+      - "~/Library/Caches/com.anthropic.claudefordesktop"
+      - "~/Library/Application Support/Claude/{Cache,Code Cache,GPUCache}"
+  - id: app-cache-codex-desktop
+    name: "Codex Desktop — cache"
+    description:
+      en: "Disposable rendering and bundle cache only. Close Codex first. Sessions, configuration and worktrees are preserved."
+      pt-BR: "Somente cache descartável e de renderização. Feche o Codex antes. Sessões, configuração e worktrees são preservados."
+      es: "Solo caché descartable y de renderizado. Cierra Codex primero. Se conservan sesiones, configuración y worktrees."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.openai.codex"]
+    paths:
+      - "~/Library/Caches/com.openai.codex"
+      - "~/Library/Application Support/Codex/{Cache,Code Cache,GPUCache}"
+  - id: app-cache-antigravity
+    name: "Antigravity — cache"
+    description:
+      en: "Disposable rendering and bundle cache only. Close Antigravity first. Sessions, settings and extensions are preserved."
+      pt-BR: "Somente cache descartável e de renderização. Feche o Antigravity antes. Sessões, ajustes e extensões são preservados."
+      es: "Solo caché descartable y de renderizado. Cierra Antigravity primero. Se conservan sesiones, ajustes y extensiones."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.google.antigravity"]
+    paths:
+      - "~/Library/Caches/com.google.antigravity"
+      - "~/Library/Application Support/Antigravity/{Cache,Code Cache,GPUCache}"
+  - id: app-cache-utm
+    name: "UTM — cache"
+    description:
+      en: "Disposable cache namespace only. Close UTM first. Virtual machine disks and configurations are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o UTM antes. Discos e configurações de máquinas virtuais são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra UTM primero. Se conservan discos y configuraciones de máquinas virtuales."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.utmapp.UTM"]
+    paths:
+      - "~/Library/Caches/com.utmapp.UTM"
+      - "~/Library/Containers/com.utmapp.UTM/Data/Library/Caches/com.utmapp.UTM"
+  - id: app-cache-orbstack
+    name: "OrbStack — cache"
+    description:
+      en: "Disposable cache namespace only. Close OrbStack first. Containers, images, volumes and Linux machines are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o OrbStack antes. Containers, imagens, volumes e máquinas Linux são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra OrbStack primero. Se conservan contenedores, imágenes, volúmenes y máquinas Linux."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["dev.kdrag0n.MacVirt"]
+    paths:
+      - "~/Library/Caches/dev.kdrag0n.MacVirt"
+      - "~/Library/Containers/dev.kdrag0n.MacVirt/Data/Library/Caches/dev.kdrag0n.MacVirt"
+  - id: app-cache-warp
+    name: "Warp — cache"
+    description:
+      en: "Disposable cache namespace only. Close Warp first. Workflows, sessions and settings are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o Warp antes. Fluxos, sessões e ajustes são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra Warp primero. Se conservan flujos, sesiones y ajustes."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["dev.warp.Warp-Stable"]
+    paths:
+      - "~/Library/Caches/dev.warp.Warp-Stable"
+  - id: app-cache-zed
+    name: "Zed — cache"
+    description:
+      en: "Disposable cache namespace only. Close Zed first. Settings, themes, extensions and workspaces are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o Zed antes. Ajustes, temas, extensões e workspaces são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra Zed primero. Se conservan ajustes, temas, extensiones y workspaces."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["dev.zed.Zed"]
+    paths:
+      - "~/Library/Caches/dev.zed.Zed"
+  - id: app-cache-ghostty
+    name: "Ghostty — cache"
+    description:
+      en: "Disposable cache namespace only. Close Ghostty first. Configuration and themes are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o Ghostty antes. Configurações e temas são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra Ghostty primero. Se conservan configuración y temas."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.mitchellh.ghostty"]
+    paths:
+      - "~/Library/Caches/com.mitchellh.ghostty"
+  - id: app-cache-jetbrains-toolbox
+    name: "JetBrains Toolbox — cache"
+    description:
+      en: "Disposable cache namespace only. Close JetBrains Toolbox first. Installed IDEs, settings and projects are preserved."
+      pt-BR: "Somente a pasta de cache descartável. Feche o JetBrains Toolbox antes. IDEs instaladas, ajustes e projetos são preservados."
+      es: "Solo la carpeta de caché descartable. Cierra JetBrains Toolbox primero. Se conservan IDEs instaladas, ajustes y proyectos."
+    risk: redownload
+    method: trash
+    auto_suggest: false
+    requires_apps_closed: ["com.jetbrains.toolbox"]
+    paths:
+      - "~/Library/Caches/com.jetbrains.toolbox"

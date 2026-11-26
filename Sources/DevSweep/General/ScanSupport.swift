@@ -72,7 +72,7 @@ enum DirectoryWalker {
                      seconds: TimeInterval = 15, skip: Set<String> = [], pruneNames: Set<String> = [],
                      reportDepthLimit: Bool = false) -> WalkReport {
         var report = WalkReport()
-        guard let identity = FileIdentity.read(root) else {
+        guard let identity = FileIdentity.read(root), !FileFootprint.isDataless(root) else {
             report.complete = false; report.issues = [root.path]; return report
         }
         let deadline = Date().addingTimeInterval(seconds)
@@ -90,7 +90,7 @@ enum DirectoryWalker {
                     }
                     guard !skip.contains(url.lastPathComponent) else { continue }
                     let metadata = try FileManager.default.attributesOfItem(atPath: url.path)
-                    if metadata[.type] as? FileAttributeType == .typeSymbolicLink { continue }
+                    if metadata[.type] as? FileAttributeType == .typeSymbolicLink || FileFootprint.isDataless(url) { continue }
                     guard let id = FileIdentity.read(url) else { report.complete = false; report.issues.append(url.path); continue }
                     guard id.device == identity.device else { continue }
                     let cloud = try? url.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])

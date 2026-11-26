@@ -2,9 +2,9 @@ import Foundation
 
 @MainActor
 final class GeneralModel: ObservableObject {
-    @Published var area: GeneralArea = .logs
-    @Published var search = ""
-    @Published var selected: Set<String> = []
+    @Published var area: GeneralArea = .logs { didSet { invalidateFileSpaceEstimate() } }
+    @Published var search = "" { didSet { invalidateFileSpaceEstimate() } }
+    @Published var selected: Set<String> = [] { didSet { invalidateFileSpaceEstimate() } }
     @Published var uninstallApplication: URL?
     @Published var maintenanceFileTask: MaintenanceTask = .savedStates
     @Published private(set) var monitoringError = ""
@@ -13,9 +13,12 @@ final class GeneralModel: ObservableObject {
     private var recordingURL: URL?
     private var recordingIdentity: FileIdentity?
     @Published var explorerMode: ExplorerMode = .folders
-    @Published var explorerFilter = ExplorerFilter()
+    @Published var explorerFilter = ExplorerFilter() { didSet { invalidateFileSpaceEstimate() } }
     @Published var explorerSort: ExplorerSort = .size
     @Published private(set) var volume: VolumeSnapshot?
+    @Published private(set) var fileSpaceEstimate: FileSpaceEstimate?
+    @Published private(set) var calculatingFileSpace = false
+    private var estimateGeneration = UUID()
     @Published private(set) var report = GeneralReport()
     @Published private(set) var measurements: [String: SizeMeasurement] = [:]
     @Published private(set) var scanning = false
@@ -74,7 +77,18 @@ final class GeneralModel: ObservableObject {
     }
     var fullyMeasured: Bool { measurements.count == report.entries.count && measurements.values.allSatisfy { $0.state == .complete } }
 
-    func choose(_ root: URL) { roots[area] = root.resolvingSymlinksInPath(); selected = [] }
+    private func invalidateFileSpaceEstimate() { estimateGeneration = UUID(); fileSpaceEstimate = nil; calculatingFileSpace = false }
+    func estimateVisibleFiles() async {
+        let run = UUID(); estimateGeneration = run
+        let entries = visible.filter { selected.isEmpty || selected.contains($0.id) }
+        let paths = entries.map(\.url)
+        calculatingFileSpace = true; fileSpaceEstimate = nil
+        let estimate = await Task.detached(priority: .utility) { FileSpaceEstimate.calculate(paths: paths) }.value
+        guard run == estimateGeneration else { return }
+        fileSpaceEstimate = estimate; calculatingFileSpace = false
+    }
+
+    func choose(_ root: URL) { estimateGeneration = UUID(); fileSpaceEstimate = nil; calculatingFileSpace = false; roots[area] = root.resolvingSymlinksInPath(); selected = [] }
     func cancel() { control.cancel() }
 
     func scan(force: Bool = false) async {
@@ -109,6 +123,7 @@ final class GeneralModel: ObservableObject {
             guard generation == run else { return }
             if valid { report = stored.1; measurements = stored.2; selected = []; scanning = false; currentPath = ""; return }
         }
+        estimateGeneration = UUID(); fileSpaceEstimate = nil; calculatingFileSpace = false
         scanning = true; selected = []; measurements = [:]; report = GeneralReport(); currentPath = root.path
         await withTaskCancellationHandler {
             let result = await Task.detached(priority: .utility) {
@@ -256,6 +271,7 @@ final class GeneralModel: ObservableObject {
             }
             var output: [String: Any] = ["path": entry.url.path, "bytes": measurement?.bytes ?? 0, "measurement": status,
                     "reviewable": entry.removable, "risk": entry.target.risk.rawValue]
+            if let source = entry.installerSource { output["source"] = source.rawValue }
             if let association = entry.association {
                 output["association"] = ["bundle_id": association.bundleID, "kind": association.kind.rawValue,
                                          "personal_data": association.kind.personal, "evidence": association.evidence] as [String: Any]
@@ -265,6 +281,11 @@ final class GeneralModel: ObservableObject {
         var output: [String: Any] = ["area": area.rawValue, "scan_complete": report.complete,
             "measurements_complete": fullyMeasured, "inspected": report.inspected,
             "issues": report.issues + measurementIssues, "entries": entries]
+        if let estimate = fileSpaceEstimate {
+            output["file_space_estimate"] = ["allocated_unique_bytes": estimate.allocatedBytes, "potential_after_trash_upper_bound": estimate.potentialAfterTrashBytes,
+                "files": estimate.files, "unique_inodes": estimate.uniqueFiles, "inodes_with_other_links": estimate.linksOutsideSelection,
+                "complete": estimate.complete, "apfs_shared_blocks_deduplicated": false] as [String: Any]
+        }
         if area == .explorer {
             output["root"] = root.path; output["mode"] = explorerMode.rawValue
             output["filters"] = ["search": search, "minimum_allocated_bytes": explorerFilter.minimumBytes,

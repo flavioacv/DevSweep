@@ -131,6 +131,7 @@ struct GeneralDashboard: View {
                     Text(tr("uninstall.notice")).font(.caption).foregroundStyle(.secondary)
                 } else { Text(tr("uninstall.open_help")).font(.caption).foregroundStyle(.secondary) }
             }
+            if model.area == .installers { Text(tr("installer.notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .maintenanceFiles {
                 Picker(tr("general.maintenance"), selection: $model.maintenanceFileTask) {
                     ForEach(MaintenanceTask.allCases.filter { $0.reviewsFiles || $0 == .launchAgents }) { Text($0.title).tag($0) }
@@ -143,6 +144,20 @@ struct GeneralDashboard: View {
             if model.area == .external { Text(tr("hygiene.external_notice")).font(.caption).foregroundStyle(.secondary) }
             if model.area == .explorer { explorerControls }
             TextField(tr("general.search"), text: $model.search).textFieldStyle(.roundedBorder)
+            if model.area == .installers || (model.area == .explorer && model.explorerMode == .largeFiles) {
+                HStack {
+                    Button(tr("footprint.calculate")) { Task { await model.estimateVisibleFiles() } }
+                        .disabled(model.scanning || model.calculatingFileSpace || model.visible.isEmpty)
+                    if model.calculatingFileSpace { ProgressView().controlSize(.small) }
+                }
+                if let estimate = model.fileSpaceEstimate {
+                    Text(tr("footprint.summary", ["size": Fmt.disk(estimate.allocatedBytes), "count": estimate.uniqueFiles, "possible": Fmt.disk(estimate.potentialAfterTrashBytes)]))
+                        .font(.caption).textSelection(.enabled)
+                    Text(tr("footprint.links", ["count": estimate.linksOutsideSelection])).font(.caption2).foregroundStyle(.secondary)
+                    if !estimate.complete { Text(tr("footprint.partial")).font(.caption2).foregroundStyle(.orange) }
+                    Text(tr("footprint.notice")).font(.caption2).foregroundStyle(.secondary)
+                }
+            }
             HStack {
                 Text(tr("general.count", ["count": model.report.entries.count, "inspected": model.report.inspected]))
                 Spacer()
@@ -233,6 +248,7 @@ struct GeneralDashboard: View {
                 Text(entry.target.title).font(.body.weight(.medium))
                 Text(entry.url.path).font(.caption2).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
                 if let date = entry.modified { Text(date, format: .dateTime.day().month().year()).font(.caption2).foregroundStyle(.secondary) }
+                if let source = entry.installerSource { Text(source.title).font(.caption).foregroundStyle(.secondary) }
                 if !entry.removable { Text(tr("general.read_only")).font(.caption2).foregroundStyle(.orange) }
                 if let association = entry.association {
                     Text(association.kind.title).font(.caption).foregroundStyle(association.kind.personal ? Color.orange : .secondary)

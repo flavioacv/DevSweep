@@ -15,7 +15,8 @@ struct ApplicationUsageSnapshot: Sendable {
             running = includeApplications ? bundleIDs(from: result) : nil
             let parsed = ProcessScanner.parse(result.stdout)
             if result.status == 0 && !parsed.isEmpty && parsed.count == result.stdout.split(separator: "\n").count {
-                tools = Set(parsed.filter { $0.uid == getuid() }.map { $0.exeName.lowercased() })
+                // Tool idleness includes visible system updaters; app bundle ownership remains user-scoped.
+                tools = Set(parsed.map { $0.exeName.lowercased() })
             }
         } else {
             running = nil

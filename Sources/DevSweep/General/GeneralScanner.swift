@@ -43,6 +43,7 @@ struct GeneralEntry: Identifiable, Sendable {
     let target: StorageTarget
     let modified: Date?
     var association: AppAssociation? = nil
+    var installerSource: InstallerSource? = nil
     var id: String { target.id }
     var url: URL { target.paths[0] }
     var removable: Bool { target.pathAuthorizations.count == target.paths.count }
@@ -136,18 +137,7 @@ enum GeneralScanner {
                 }
             }
         case .installers:
-            let roots = selectedRoot.map { [$0] } ?? [home.appendingPathComponent("Downloads"), home.appendingPathComponent("Desktop"), library.appendingPathComponent("Caches/Homebrew/downloads")]
-            for root in roots where PathGlob.exists(root.path) {
-                let walk = DirectoryWalker.walk(root, depth: 4, control: control, pruneNames: ["node_modules", ".git"])
-                absorb(walk, into: &report)
-                for file in walk.files {
-                    let ext = file.pathExtension.lowercased()
-                    if ["dmg", "pkg", "mpkg", "iso", "xip", "ipa", "apk", "aab", "apks"].contains(ext)
-                        || (ext == "zip" && InstallerArchive.containsInstaller(file)) {
-                        report.entries.append(entry(file, root: root, area: area, home: home))
-                    }
-                }
-            }
+            return InstallerDiscovery.scan(home: home, selectedRoot: selectedRoot, control: control)
         case .projects:
             guard prefs.workspacesConfirmed else { report.issues = [tr("general.confirm_projects")]; report.complete = false; return report }
             let roots = selectedRoot.map { [$0] } ?? prefs.projectRoots.map { URL(fileURLWithPath: expandTilde($0)).resolvingSymlinksInPath() }
@@ -269,38 +259,64 @@ enum GeneralScanner {
 /// Inspects only a bounded ZIP central directory. No extraction, decompression or cloud download.
 enum InstallerArchive {
     static func containsInstaller(_ url: URL) -> Bool {
-        guard let file = try? FileHandle(forReadingFrom: url) else { return false }
+        names(url)?.contains { $0.contains(".app/Contents/Info.plist") || $0.hasSuffix(".pkg") || $0.hasSuffix(".mpkg") } ?? false
+    }
+    static func containsFirmware(_ url: URL) -> Bool {
+        guard let entries = names(url) else { return false }
+        return entries.contains("BuildManifest.plist") && entries.contains("Restore.plist")
+    }
+
+    /// ZIP/ZIP64 central-directory metadata only, capped independently of payload size.
+    private static func names(_ url: URL) -> [String]? {
+        guard FileIdentity.read(url) != nil, !FileFootprint.isDataless(url), let file = try? FileHandle(forReadingFrom: url) else { return nil }
         defer { try? file.close() }
+        func number(_ data: Data, _ offset: Int, _ length: Int) -> UInt64 {
+            guard offset >= 0, offset + length <= data.count else { return UInt64.max }
+            return (0..<length).reduce(0) { $0 | UInt64(data[offset + $1]) << (8 * $1) }
+        }
         do {
             let size = try file.seekToEnd()
-            guard size >= 22 else { return false }
+            guard size >= 22 else { return nil }
             let tailSize = min(size, 65_557)
             try file.seek(toOffset: size - tailSize)
             let tail = try file.read(upToCount: Int(tailSize)) ?? Data()
-            guard let end = tail.range(of: Data([0x50, 0x4b, 0x05, 0x06]), options: .backwards), end.lowerBound + 22 <= tail.count else { return false }
-            func number(_ data: Data, _ offset: Int, _ length: Int) -> UInt64 {
-                guard offset >= 0, offset + length <= data.count else { return UInt64.max }
-                return (0..<length).reduce(0) { $0 | UInt64(data[offset + $1]) << (8 * $1) }
-            }
-            let count = number(tail, end.lowerBound + 10, 2)
-            let bytes = number(tail, end.lowerBound + 12, 4)
-            let offset = number(tail, end.lowerBound + 16, 4)
-            guard count > 0, count <= 1000, bytes <= 1_048_576, offset <= size, bytes <= size - offset else { return false }
+            guard let end = tail.range(of: Data([0x50, 0x4b, 0x05, 0x06]), options: .backwards), end.lowerBound + 22 <= tail.count else { return nil }
+            let at = end.lowerBound, absoluteEnd = size - tailSize + UInt64(at)
+            guard number(tail, at + 4, 2) == 0, number(tail, at + 6, 2) == 0,
+                  UInt64(at + 22) + number(tail, at + 20, 2) == UInt64(tail.count) else { return nil }
+            var count = number(tail, at + 10, 2), bytes = number(tail, at + 12, 4), offset = number(tail, at + 16, 4)
+            var boundary = absoluteEnd
+            if count == 0xffff || bytes == 0xffffffff || offset == 0xffffffff {
+                guard absoluteEnd >= 20 else { return nil }
+                try file.seek(toOffset: absoluteEnd - 20)
+                let locator = try file.read(upToCount: 20) ?? Data()
+                guard locator.count == 20, locator.prefix(4) == Data([0x50, 0x4b, 0x06, 0x07]),
+                      number(locator, 4, 4) == 0, number(locator, 16, 4) == 1 else { return nil }
+                let recordOffset = number(locator, 8, 8)
+                guard absoluteEnd >= 76, recordOffset <= absoluteEnd - 76 else { return nil }
+                try file.seek(toOffset: recordOffset)
+                let record = try file.read(upToCount: 56) ?? Data()
+                guard record.count == 56, record.prefix(4) == Data([0x50, 0x4b, 0x06, 0x06]),
+                      number(record, 4, 8) >= 44, number(record, 4, 8) <= 1024,
+                      number(record, 16, 4) == 0, number(record, 20, 4) == 0,
+                      number(record, 24, 8) == number(record, 32, 8) else { return nil }
+                guard number(record, 4, 8) <= absoluteEnd - 20 - recordOffset - 12 else { return nil }
+                count = number(record, 32, 8); bytes = number(record, 40, 8); offset = number(record, 48, 8); boundary = recordOffset
+            } else if number(tail, at + 8, 2) != count { return nil }
+            guard count > 0, count <= 1000, bytes <= 1_048_576, offset <= boundary, bytes <= boundary - offset else { return nil }
             try file.seek(toOffset: offset)
             let central = try file.read(upToCount: Int(bytes)) ?? Data()
-            var cursor = 0, found = false
+            var cursor = 0
+            var result: [String] = []
             for _ in 0..<count {
-                guard cursor + 46 <= central.count, central[cursor..<cursor + 4] == Data([0x50, 0x4b, 0x01, 0x02]) else { return false }
-                let length = Int(number(central, cursor + 28, 2))
-                let extra = Int(number(central, cursor + 30, 2))
-                let comment = Int(number(central, cursor + 32, 2))
+                guard cursor + 46 <= central.count, central[cursor..<cursor + 4] == Data([0x50, 0x4b, 0x01, 0x02]) else { return nil }
+                let length = Int(number(central, cursor + 28, 2)), extra = Int(number(central, cursor + 30, 2)), comment = Int(number(central, cursor + 32, 2))
                 guard cursor + 46 + length + extra + comment <= central.count,
                       let name = String(data: central[cursor + 46..<cursor + 46 + length], encoding: .utf8),
-                      !name.hasPrefix("/"), !name.contains("\0"), !name.split(separator: "/").contains("..") else { return false }
-                if name.contains(".app/Contents/Info.plist") || name.hasSuffix(".pkg") || name.hasSuffix(".mpkg") { found = true }
-                cursor += 46 + length + extra + comment
+                      !name.hasPrefix("/"), !name.contains("\0"), !name.contains("\\"), !name.split(separator: "/").contains("..") else { return nil }
+                result.append(name); cursor += 46 + length + extra + comment
             }
-            return found
-        } catch { return false }
+            return result
+        } catch { return nil }
     }
 }

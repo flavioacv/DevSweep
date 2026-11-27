@@ -9,6 +9,8 @@ struct StorageView: View {
         // Unmeasured targets (nil size) stay visible with a spinner; empty ones are hidden.
         let visible = model.targets.filter { (model.sizes[$0.id] ?? 1) > 0 || model.storageMeasurements[$0.id]?.state != .complete }
         let total = visible.reduce(0) { $0 + (model.sizes[$1.id] ?? 0) }
+        let allSafeIDs = visible.filter { $0.risk == .safe && (model.sizes[$0.id] ?? 0) > 0 }.map(\.id)
+        let allNonDestructiveIDs = visible.filter { $0.risk != .dataLoss && (model.sizes[$0.id] ?? 0) > 0 }.map(\.id)
         let stacks = Array(Set(visible.map(\.stack)))
             .sorted { stackTotal($0, visible) > stackTotal($1, visible) }
 
@@ -23,6 +25,25 @@ struct StorageView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
+                    Menu {
+                        Button(tr("storage.clean_all_safe", ["count": allSafeIDs.count])) {
+                            Task { await model.clean(targetIDs: allSafeIDs) }
+                        }
+                        .disabled(allSafeIDs.isEmpty || model.isScanningStorage || model.cleanupProgress != nil)
+                        Button(tr("storage.clean_all_non_destructive", ["count": allNonDestructiveIDs.count])) {
+                            Task { await model.clean(targetIDs: allNonDestructiveIDs) }
+                        }
+                        .disabled(allNonDestructiveIDs.isEmpty || model.isScanningStorage || model.cleanupProgress != nil)
+                    } label: {
+                        Label(tr("storage.quick_clean"), systemImage: "sparkles")
+                    } primaryAction: {
+                        Task { await model.clean(targetIDs: allSafeIDs.isEmpty ? allNonDestructiveIDs : allSafeIDs) }
+                    }
+                    .menuStyle(.button)
+                    .controlSize(.small)
+                    .fixedSize()
+                    .disabled(allNonDestructiveIDs.isEmpty || model.isScanningStorage || model.cleanupProgress != nil)
+                    .help(tr("storage.quick_clean_help"))
                     Button { showingHistory = true } label: {
                         Image(systemName: "clock.arrow.circlepath")
                     }

@@ -325,6 +325,53 @@ struct GeneralDashboard: View {
     private var maintenance: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(tr("optimize.title")).font(.headline)
+                            Text(tr("optimize.subtitle")).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if model.optimizing {
+                            Button(tr("general.cancel")) { model.cancel() }.controlSize(.small)
+                        } else {
+                            ActionButton(title: tr("optimize.run_now"), symbol: "bolt.shield", confirm: false, busy: false) {
+                                Task { await model.runAutoOptimize() }
+                            }
+                            .disabled(model.runningMaintenance != nil)
+                        }
+                    }
+                    if let progress = model.optimizeProgress {
+                        ProgressView(value: Double(progress.completed), total: Double(max(progress.total, 1)))
+                        if !progress.currentTitle.isEmpty {
+                            Text(tr("optimize.running_step", ["current": progress.completed + 1, "total": progress.total, "task": progress.currentTitle]))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    if !model.performanceFindings.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(tr("optimize.diag_header")).font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                            ForEach(model.performanceFindings) { finding in
+                                Text("• \(finding.title): \(finding.detail)").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    if !model.optimizeResults.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(model.optimizeResults) { step in
+                                HStack(spacing: 6) {
+                                    Image(systemName: step.status == .succeeded ? "checkmark.circle.fill" : (step.status == .skipped ? "minus.circle.fill" : "exclamationmark.triangle.fill"))
+                                        .foregroundStyle(step.status == .succeeded ? .green : (step.status == .skipped ? .secondary : .orange))
+                                        .font(.caption)
+                                    Text(step.task.title).font(.caption.weight(.medium))
+                                    Text(step.summary).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(12).card()
+
                 Text(tr("maintenance.notice")).font(.callout).foregroundStyle(.secondary)
                 ForEach(MaintenanceTask.allCases) { task in
                     HStack {
@@ -337,7 +384,7 @@ struct GeneralDashboard: View {
                         ActionButton(title: task.changesState ? tr("maintenance.run") : tr("maintenance.inspect"),
                                      symbol: task.changesState ? "wrench" : "magnifyingglass", confirm: task.changesState || task.requiresAdmin,
                                      busy: model.runningMaintenance == task) { Task { await model.runMaintenance(task) } }
-                            .disabled(model.runningMaintenance != nil)
+                            .disabled(model.runningMaintenance != nil || model.optimizing)
                         if task.reviewsFiles || task == .launchAgents {
                             Button(tr("maintenance.review_files")) { model.maintenanceFileTask = task; model.area = .maintenanceFiles }.controlSize(.small)
                         }

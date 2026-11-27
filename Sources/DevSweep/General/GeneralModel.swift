@@ -34,6 +34,10 @@ final class GeneralModel: ObservableObject {
     private var lastSMART = Date.distantPast
     @Published private(set) var maintenanceOutput = ""
     @Published private(set) var runningMaintenance: MaintenanceTask?
+    @Published private(set) var optimizing = false
+    @Published private(set) var optimizeProgress: (completed: Int, total: Int, currentTitle: String)?
+    @Published private(set) var optimizeResults: [OptimizeStepResult] = []
+    @Published private(set) var performanceFindings: [PerformanceFinding] = []
     @Published private(set) var roots: [GeneralArea: URL] = [:]
     private let home: URL
     private let logDirectory: URL
@@ -241,6 +245,59 @@ final class GeneralModel: ObservableObject {
             await Task.detached { CleanupLog.record(entry, in: directory) }.value
         }
         runningMaintenance = nil
+    }
+
+    func runAutoOptimize(
+        tasks: [MaintenanceTask] = MaintenanceTask.safeAutoTasks,
+        diagnosticsProvider: @escaping @Sendable () -> [PerformanceFinding] = { PerformanceDiagnostics.capture() }
+    ) async {
+        guard runningMaintenance == nil && !optimizing else { return }
+        let flag = ScanControl(); control = flag
+        optimizing = true; optimizeResults = []; performanceFindings = []; maintenanceOutput = ""
+        let findings = await Task.detached(priority: .utility) { diagnosticsProvider() }.value
+        performanceFindings = findings
+        let home = home, runner = maintenanceRunner
+        var lines: [String] = []
+        if !findings.isEmpty {
+            lines.append(tr("optimize.diag_header"))
+            lines += findings.map { "• \($0.title): \($0.detail)" }
+            lines.append("")
+        }
+        var succeeded = 0, skipped = 0, failed = 0
+        for (index, task) in tasks.enumerated() {
+            if flag.isCancelled {
+                lines.append(tr("general.cancelled"))
+                break
+            }
+            runningMaintenance = task
+            optimizeProgress = (index, tasks.count, task.title)
+            let result = await Task.detached(priority: .utility) { runner(task, home, flag) }.value
+            let status: OptimizeStepResult.Status
+            let detail = [result.stdout, result.stderr].map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.first { !$0.isEmpty } ?? ""
+            if result.status == 0 {
+                status = .succeeded; succeeded += 1
+            } else if result.stderr.contains(tr("maintenance.database_busy")) || result.stderr.contains(tr("maintenance.unsupported")) {
+                status = .skipped; skipped += 1
+            } else {
+                status = .failed; failed += 1
+            }
+            let firstLine = detail.split(separator: "\n").first.map(String.init) ?? (status == .succeeded ? tr("maintenance.finished") : tr("maintenance.incomplete"))
+            optimizeResults.append(OptimizeStepResult(task: task, status: status, summary: firstLine))
+            let marker = status == .succeeded ? "✓" : (status == .skipped ? "⊘" : "⚠")
+            lines.append("\(marker) \(task.title): \(firstLine)")
+        }
+        optimizeProgress = (optimizeResults.count, tasks.count, "")
+        lines.append("")
+        lines.append(tr("optimize.summary", ["ok": succeeded, "skipped": skipped, "failed": failed]))
+        maintenanceOutput = lines.joined(separator: "\n")
+        let entry = CleanupLog.Entry(
+            date: Date(), item: "maintenance-auto-optimize", risk: "safe", method: "maintenance",
+            paths: [], errors: failed > 0 ? ["\(failed) step(s) incomplete"] : [],
+            title: tr("optimize.title")
+        )
+        let directory = logDirectory
+        await Task.detached { CleanupLog.record(entry, in: directory) }.value
+        runningMaintenance = nil; optimizing = false; optimizeProgress = nil
     }
 
     func exportData() throws -> Data {

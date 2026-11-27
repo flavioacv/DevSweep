@@ -316,4 +316,44 @@ final class ExpansionTests: XCTestCase {
         XCTAssertTrue(result.stdout.contains("/Volumes/Gone/OldProject"))
         XCTAssertFalse(result.stdout.contains(existing.path))
     }
+
+    func testPerformanceDiagnosticsAndAutoOptimizeFlow() async throws {
+        let ps = """
+         20.5 /System/Library/Frameworks/CoreServices.framework/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+         12.0 mdworker_shared
+         28.4 /usr/libexec/syspolicyd
+          2.0 /Applications/Zelvo.app/Contents/MacOS/DevSweep
+        """
+        let hdiutil = """
+        image-path      : /opt/fixtures/Installer.dmg
+        image-path      : /opt/fixtures/Other.iso
+        """
+        let findings = PerformanceDiagnostics.analyze(psOutput: ps, hdiutilOutput: hdiutil)
+        XCTAssertEqual(findings.map(\.id), ["spotlight-cpu", "syspolicyd-cpu", "mounted-dmgs"])
+        XCTAssertTrue(PerformanceDiagnostics.analyze(psOutput: "1.0 /bin/zsh\n", hdiutilOutput: "").isEmpty)
+        XCTAssertEqual(PerformanceDiagnostics.capture(runner: { exe, _ in
+            ShellResult(status: 0, stdout: exe == "/bin/ps" ? ps : hdiutil, stderr: "")
+        }).count, 3)
+
+        let logDir = root.appendingPathComponent("auto-log")
+        let model = await MainActor.run {
+            GeneralModel(home: root, logDirectory: logDir, maintenanceRunner: { task, _, _ in
+                switch task {
+                case .quickLook: ShellResult(status: 0, stdout: "refreshed", stderr: "")
+                case .sqlite: ShellResult(status: 1, stdout: "", stderr: tr("maintenance.database_busy"))
+                default: ShellResult(status: 1, stdout: "", stderr: "failed")
+                }
+            })
+        }
+        await model.runAutoOptimize(tasks: [.quickLook, .sqlite, .spotlightRules], diagnosticsProvider: { findings })
+        let results = await MainActor.run { model.optimizeResults }
+        let output = await MainActor.run { model.maintenanceOutput }
+        let savedFindings = await MainActor.run { model.performanceFindings }
+        XCTAssertEqual(savedFindings.count, 3)
+        XCTAssertEqual(results.map(\.status), [.succeeded, .skipped, .failed])
+        XCTAssertTrue(output.contains("✓"))
+        XCTAssertTrue(output.contains("⊘"))
+        XCTAssertTrue(output.contains("⚠"))
+        XCTAssertEqual(CleanupLog.read(in: logDir).last?.item, "maintenance-auto-optimize")
+    }
 }

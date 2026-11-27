@@ -64,7 +64,80 @@ enum SpotlightRulesAudit {
     }
 }
 
+/// Read-only performance bottleneck diagnostics inspired by automated Mac health checks.
+struct PerformanceFinding: Identifiable, Sendable, Equatable {
+    let id: String
+    let title: String
+    let detail: String
+}
+
+enum PerformanceDiagnostics {
+    static func capture(
+        runner: (String, [String]) -> ShellResult = { Shell.run($0, $1, timeout: 8) }
+    ) -> [PerformanceFinding] {
+        let ps = runner("/bin/ps", ["-Aceo", "pcpu=,command="])
+        let hdiutil = runner("/usr/bin/hdiutil", ["info"])
+        return analyze(psOutput: ps.status == 0 ? ps.stdout : "", hdiutilOutput: hdiutil.status == 0 ? hdiutil.stdout : "")
+    }
+
+    static func analyze(psOutput: String, hdiutilOutput: String) -> [PerformanceFinding] {
+        var spotlightCPU = 0.0
+        var syspolicyCPU = 0.0
+        for line in psOutput.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard let split = trimmed.firstIndex(where: { $0.isWhitespace }) else { continue }
+            let cpuText = trimmed[..<split].replacingOccurrences(of: ",", with: ".")
+            let cpu = Double(cpuText) ?? 0
+            let cmd = trimmed[split...].trimmingCharacters(in: .whitespaces).lowercased()
+            if cmd.contains("mdworker") || cmd.contains("mds_stores") || cmd.contains("mdbulkimport") || cmd == "mds" || cmd.hasSuffix("/mds") {
+                spotlightCPU += cpu
+            } else if cmd == "syspolicyd" || cmd.hasSuffix("/syspolicyd") {
+                syspolicyCPU += cpu
+            }
+        }
+        var findings: [PerformanceFinding] = []
+        if spotlightCPU >= 25 {
+            findings.append(PerformanceFinding(
+                id: "spotlight-cpu",
+                title: tr("optimize.diag_spotlight"),
+                detail: tr("optimize.diag_cpu_value", ["cpu": String(format: "%.1f%%", spotlightCPU)])
+            ))
+        }
+        if syspolicyCPU >= 25 {
+            findings.append(PerformanceFinding(
+                id: "syspolicyd-cpu",
+                title: tr("optimize.diag_syspolicyd"),
+                detail: tr("optimize.diag_cpu_value", ["cpu": String(format: "%.1f%%", syspolicyCPU)])
+            ))
+        }
+        let mountedDMGs = hdiutilOutput.split(separator: "\n").filter {
+            let t = $0.trimmingCharacters(in: .whitespaces).lowercased()
+            return t.hasPrefix("image-path") && t.hasSuffix(".dmg")
+        }.count
+        if mountedDMGs > 0 {
+            findings.append(PerformanceFinding(
+                id: "mounted-dmgs",
+                title: tr("optimize.diag_dmgs"),
+                detail: tr("optimize.diag_dmgs_count", ["count": mountedDMGs])
+            ))
+        }
+        return findings
+    }
+}
+
+struct OptimizeStepResult: Identifiable, Sendable, Equatable {
+    enum Status: String, Sendable { case succeeded, skipped, failed }
+    let task: MaintenanceTask
+    let status: Status
+    let summary: String
+    var id: String { task.id }
+}
+
 enum MaintenanceTask: String, CaseIterable, Identifiable, Sendable {
+    static let safeAutoTasks: [MaintenanceTask] = [
+        .quickLook, .iconCache, .preventDSStore, .sqlite,
+        .spotlightRules, .launchAgents, .preferences, .loginItems, .backups
+    ]
     case launchAgents, preferences, spotlight, loginItems, verifyDisk, dns, quickLook
     case iconCache, savedStates, repairPreferences, sqlite, preventDSStore, legacyOverrides, networkReset, permissions
     case spotlightRebuild, spotlightRules, periodic, finderLists, gatekeeper, notifications, coreDuet, sensorReport, backups, dockerAudit, dockerPrune

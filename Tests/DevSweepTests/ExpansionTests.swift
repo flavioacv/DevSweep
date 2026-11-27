@@ -253,4 +253,67 @@ final class ExpansionTests: XCTestCase {
         XCTAssertNotEqual(changed.status, 0)
         XCTAssertFalse(calls.contains { $0.contains("image") && $0.contains("prune") })
     }
+
+    func testBackupsSkipsTmutilWhenNetworkVolumeMountedAndListsLocalSnapshotsWhenLocalOnly() {
+        let entries = [
+            MountTableGuard.Entry(mountPoint: "/", fsType: "apfs", isLocal: true),
+            MountTableGuard.Entry(mountPoint: "/System/Volumes/Data/home", fsType: "autofs", isLocal: false),
+            MountTableGuard.Entry(mountPoint: "/Volumes/NAS", fsType: "smbfs", isLocal: false),
+        ]
+        XCTAssertEqual(MountTableGuard.networkVolumes(in: entries), ["/Volumes/NAS"])
+        XCTAssertNil(MountTableGuard.networkVolumes(in: nil))
+        XCTAssertNotNil(MountTableGuard.mountedEntries())
+
+        var invoked = false
+        let skipped = MaintenanceTask.backups.run(home: root, control: ScanControl(), executor: { _, _, _ in
+            invoked = true
+            return ShellResult(status: 0, stdout: "", stderr: "")
+        }, networkVolumesProvider: { ["/Volumes/NAS"] })
+        XCTAssertEqual(skipped.status, 0)
+        XCTAssertFalse(invoked)
+
+        let unknown = MaintenanceTask.backups.run(home: root, control: ScanControl(), executor: { _, _, _ in
+            invoked = true
+            return ShellResult(status: 0, stdout: "", stderr: "")
+        }, networkVolumesProvider: { nil })
+        XCTAssertEqual(unknown.status, 0)
+        XCTAssertFalse(invoked)
+
+        var argsSeen: [[String]] = []
+        let localOnly = MaintenanceTask.backups.run(home: root, control: ScanControl(), executor: { _, args, _ in
+            argsSeen.append(args)
+            if args.first == "listlocalsnapshots" {
+                return ShellResult(status: 0, stdout: "com.apple.TimeMachine.2026-11-26-100000.local", stderr: "")
+            }
+            return ShellResult(status: 0, stdout: "/Volumes/Backup/2026-11-26", stderr: "")
+        }, networkVolumesProvider: { [] })
+        XCTAssertEqual(localOnly.status, 0)
+        XCTAssertEqual(argsSeen, [["listlocalsnapshots", "/"], ["listbackups"]])
+        XCTAssertTrue(localOnly.stdout.contains("com.apple.TimeMachine.2026-11-26-100000.local"))
+        XCTAssertTrue(localOnly.stdout.contains("/Volumes/Backup/2026-11-26"))
+    }
+
+    func testSpotlightRulesAuditDetectsOrphanExclusionsReadOnly() throws {
+        let existing = try file("ExistingFolder/keep").deletingLastPathComponent()
+        let plistDict: [String: Any] = [
+            "Exclusions": [existing.path, "/Volumes/Gone/OldProject", "~/MissingDir"],
+            "orderedItems": [["path": "/opt/absent-tool"]]
+        ]
+        let xml = try PropertyListSerialization.data(fromPropertyList: plistDict, format: .xml, options: 0)
+        let orphans = try XCTUnwrap(SpotlightRulesAudit.orphanPaths(from: xml, home: root))
+        XCTAssertEqual(orphans, [root.appendingPathComponent("MissingDir").path, "/Volumes/Gone/OldProject", "/opt/absent-tool"].sorted())
+        XCTAssertNil(SpotlightRulesAudit.orphanPaths(from: Data("not-a-plist".utf8), home: root))
+
+        var commands: [(String, [String])] = []
+        let result = MaintenanceTask.spotlightRules.run(home: root, control: ScanControl(), executor: { exe, args, _ in
+            commands.append((exe, args))
+            if exe == "/usr/bin/mdutil" { return ShellResult(status: 0, stdout: "/: Indexing enabled.", stderr: "") }
+            return ShellResult(status: 0, stdout: String(decoding: xml, as: UTF8.self), stderr: "")
+        })
+        XCTAssertEqual(result.status, 0)
+        XCTAssertEqual(commands.map(\.0), ["/usr/bin/mdutil", "/usr/bin/defaults"])
+        XCTAssertEqual(commands[1].1, ["export", "com.apple.Spotlight", "-"])
+        XCTAssertTrue(result.stdout.contains("/Volumes/Gone/OldProject"))
+        XCTAssertFalse(result.stdout.contains(existing.path))
+    }
 }

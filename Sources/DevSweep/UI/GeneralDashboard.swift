@@ -11,7 +11,7 @@ struct GeneralDashboard: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("DevSweep").font(.title2.bold()).padding(.bottom, 12)
+                Text("Zelvo").font(.title2.bold()).padding(.bottom, 12)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 5) {
                         ForEach(GeneralArea.allCases) { area in
@@ -365,7 +365,7 @@ struct GeneralDashboard: View {
     }
 
     private func recordMonitor() {
-        let panel = NSSavePanel(); panel.nameFieldStringValue = "devsweep-monitor.ndjson"
+        let panel = NSSavePanel(); panel.nameFieldStringValue = "zelvo-monitor.ndjson"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         Task { do { try await model.startMonitorRecording(to: url) } catch { exportError = error.localizedDescription } }
     }
@@ -373,7 +373,7 @@ struct GeneralDashboard: View {
     private func export(ndjson: Bool = false) {
         do {
             let data = ndjson ? model.exportMonitorHistory() : try model.exportData()
-            let panel = NSSavePanel(); panel.nameFieldStringValue = "devsweep-" + model.area.rawValue + (ndjson ? ".ndjson" : ".json")
+            let panel = NSSavePanel(); panel.nameFieldStringValue = "zelvo-" + model.area.rawValue + (ndjson ? ".ndjson" : ".json")
             if panel.runModal() == .OK, let url = panel.url { try data.write(to: url, options: .atomic) }
         } catch { exportError = error.localizedDescription }
     }

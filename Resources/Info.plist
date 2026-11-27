@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>DevSweep</string>
+    <string>Zelvo</string>
     <key>CFBundleDisplayName</key>
-    <string>DevSweep</string>
+    <string>Zelvo</string>
     <key>CFBundleIdentifier</key>
     <string>io.github.devsweep.DevSweep</string>
     <key>CFBundleExecutable</key>
@@ -41,6 +41,6 @@
     <key>SUScheduledCheckInterval</key>
     <integer>86400</integer>
     <key>NSAppleEventsUsageDescription</key>
-    <string>DevSweep uses Finder to empty the Trash when you ask it to.</string>
+    <string>Zelvo uses Finder to empty the Trash when you ask it to.</string>
 </dict>
 </plist>

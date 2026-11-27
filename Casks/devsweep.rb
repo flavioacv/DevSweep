@@ -15,14 +15,14 @@ cask "devsweep" do
   sha256 :no_check
 
   url "https://github.com/flavioacv/DevSweep/releases/latest/download/DevSweep.zip"
-  name "DevSweep"
-  desc "Menu bar app that cleans developer processes and caches"
+  name "Zelvo"
+  desc "Mac cleanup, developer workspaces and system monitoring"
   homepage "https://github.com/flavioacv/DevSweep"
 
   auto_updates true
   depends_on macos: :sonoma
 
-  app "DevSweep.app"
+  app "Zelvo.app"
 
   zap trash: [
     "~/Library/Preferences/io.github.devsweep.DevSweep.plist",

@@ -86,8 +86,8 @@ private struct HeaderView: View {
         let lowDisk = Double(system.diskFree) < Prefs.defaults.double(forKey: Prefs.Key.lowDiskGB) * 1e9
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: "sparkles").foregroundStyle(.tint)
-                Text("DevSweep").font(.headline)
+                Image(nsImage: MenuBarLabel.brandIcon).foregroundStyle(.tint)
+                Text("Zelvo").font(.headline)
                 Spacer()
                 if model.isScanningStorage || model.isScanningProcesses {
                     ProgressView().controlSize(.mini)

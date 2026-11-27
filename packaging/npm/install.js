@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Downloads a DevSweep release, checks it against the SHA-256 published with it, and
+// Downloads a Zelvo release, checks it against the SHA-256 published with it, and
 // installs the app. Run with `npx devsweep`.
 //
 //   npx devsweep                 install the latest release into /Applications
@@ -58,21 +58,22 @@ async function download(url) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
-    console.log("usage: npx @flavioacv/devsweep [--version x.y.z] [--to /Applications] [--no-open]");
+    console.log("usage: npx @flavioacv/zelvo [--version x.y.z] [--to /Applications] [--no-open]");
     return;
   }
   if (process.platform !== "darwin") {
-    throw new Error("DevSweep is a macOS app.");
+    throw new Error("Zelvo is a macOS app.");
   }
 
   const release = await fetchRelease(options.version);
-  const asset = release.assets.find((item) => /^DevSweep-.*\.zip$/.test(item.name));
+  const asset = release.assets.find((item) => /^Zelvo-.*\.zip$/.test(item.name))
+    ?? release.assets.find((item) => /^DevSweep-.*\.zip$/.test(item.name));
   if (!asset) {
     throw new Error(`release ${release.tag_name} has no app attached yet.`);
   }
   const checksumAsset = release.assets.find((item) => item.name === `${asset.name}.sha256`);
 
-  console.log(`Downloading DevSweep ${release.tag_name}…`);
+  console.log(`Downloading Zelvo ${release.tag_name}…`);
   const archive = await download(asset.browser_download_url);
 
   if (!checksumAsset) {
@@ -99,14 +100,20 @@ async function main() {
       throw new Error("the archive did not contain an app.");
     }
     const target = join(options.destination, app);
-    if (existsSync(target)) {
-      console.log(`Replacing ${target}…`);
-      try {
-        execFileSync("/usr/bin/pkill", ["-x", "DevSweep"], { stdio: "ignore" });
-      } catch {
-        // Not running, nothing to stop.
+    const legacyTarget = app === "Zelvo.app" ? join(options.destination, "DevSweep.app") : null;
+    const toRemove = [target, legacyTarget].filter((item) => item && existsSync(item));
+    if (toRemove.length > 0) {
+      for (const proc of ["DevSweep", "Zelvo"]) {
+        try {
+          execFileSync("/usr/bin/pkill", ["-x", proc], { stdio: "ignore" });
+        } catch {
+          // Not running, nothing to stop.
+        }
       }
-      await rm(target, { recursive: true, force: true });
+      for (const existing of toRemove) {
+        console.log(`Replacing ${existing}…`);
+        await rm(existing, { recursive: true, force: true });
+      }
     }
     // Without this, copying into a folder that doesn't exist yet would turn the folder
     // itself into the app bundle.
@@ -116,7 +123,7 @@ async function main() {
 
     if (options.open) {
       execFileSync("/usr/bin/open", [target]);
-      console.log("DevSweep is now in your menu bar.");
+      console.log("Zelvo is now in your menu bar.");
     }
   } finally {
     await rm(workingDirectory, { recursive: true, force: true });
@@ -124,6 +131,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`devsweep: ${error.message}`);
+  console.error(`zelvo: ${error.message}`);
   process.exit(1);
 });

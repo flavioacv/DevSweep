@@ -91,7 +91,7 @@ enum ProcessScanner {
             let hasPorts = !(ports[process.pid] ?? []).isEmpty
             if let rule = rules.first(where: { $0.matches(process, hasPorts) }) {
                 ruleFor[process.pid] = rule
-            } else if let bundle = process.appBundlePath, !bundle.contains("DevSweep") {
+            } else if let bundle = process.appBundlePath, !bundle.contains("DevSweep"), !bundle.contains("Zelvo") {
                 let rule = appRules[bundle] ?? ProcessRules.appRule(bundlePath: bundle)
                 appRules[bundle] = rule
                 ruleFor[process.pid] = rule

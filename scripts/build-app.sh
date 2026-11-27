@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Builds DevSweep.app into ./build.
+# Builds Zelvo.app into ./build.
 #   --install                copy it to /Applications and launch it
 #   UNIVERSAL=1              build for Apple silicon and Intel (the release workflow does this)
 #   DEVSWEEP_VERSION=x.y.z   override the version from version.txt
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP="build/DevSweep.app"
+APP="build/Zelvo.app"
 CONTENTS="$APP/Contents"
 RESOURCES="$CONTENTS/Resources"
 VERSION="${DEVSWEEP_VERSION:-$(tr -d '[:space:]' < version.txt)}"
@@ -46,7 +46,7 @@ cp -R Resources/*.lproj "$RESOURCES/"
 cp stacks/*.yaml "$RESOURCES/stacks/"
 cp locales/*.yaml "$RESOURCES/locales/"
 
-if [[ ! -f build/AppIcon.icns ]]; then
+if [[ ! -f build/AppIcon.icns || Resources/AppIcon-source.png -nt build/AppIcon.icns || scripts/make-icon.swift -nt build/AppIcon.icns ]]; then
   rm -rf build/AppIcon.iconset
   swift scripts/make-icon.swift build/AppIcon.iconset
   iconutil -c icns build/AppIcon.iconset -o build/AppIcon.icns
@@ -69,8 +69,9 @@ echo "✓ $APP ($VERSION)"
 
 if [[ "${1:-}" == "--install" ]]; then
   pkill -x DevSweep 2>/dev/null || true
-  rm -rf /Applications/DevSweep.app
+  pkill -x Zelvo 2>/dev/null || true
+  rm -rf /Applications/DevSweep.app /Applications/Zelvo.app
   cp -R "$APP" /Applications/
-  open /Applications/DevSweep.app
+  open /Applications/Zelvo.app
   echo "✓ Installed in /Applications and launched"
 fi

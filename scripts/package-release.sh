@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages build/DevSweep.app for a GitHub release (run by .github/workflows/release.yml).
+# Packages build/Zelvo.app for a GitHub release (run by .github/workflows/release.yml).
 # Produces in build/release/: the zip, its SHA-256, and appcast.xml for Sparkle.
 #
 # Required env: DEVSWEEP_VERSION, TAG, GITHUB_REPOSITORY.
@@ -12,15 +12,19 @@ VERSION="${DEVSWEEP_VERSION:?set DEVSWEEP_VERSION}"
 TAG="${TAG:?set TAG}"
 REPOSITORY="${GITHUB_REPOSITORY:?set GITHUB_REPOSITORY}"
 OUT="build/release"
-ZIP="DevSweep-$VERSION.zip"
+ZIP="Zelvo-$VERSION.zip"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
-ditto -c -k --sequesterRsrc --keepParent build/DevSweep.app "$OUT/$ZIP"
+ditto -c -k --sequesterRsrc --keepParent build/Zelvo.app "$OUT/$ZIP"
 (cd "$OUT" && shasum -a 256 "$ZIP" > "$ZIP.sha256")
 # Same archive under a stable name, so the Homebrew cask can point at
 # releases/latest/download/DevSweep.zip and never need an update.
+cp "$OUT/$ZIP" "$OUT/Zelvo.zip"
+# Compatibility aliases for existing installers and cask URLs.
 cp "$OUT/$ZIP" "$OUT/DevSweep.zip"
+cp "$OUT/$ZIP" "$OUT/DevSweep-$VERSION.zip"
+(cd "$OUT" && shasum -a 256 "DevSweep-$VERSION.zip" > "DevSweep-$VERSION.zip.sha256")
 echo "✓ $OUT/$ZIP"
 
 if [[ -z "${SPARKLE_PRIVATE_KEY:-}" ]]; then
@@ -43,10 +47,10 @@ cat > "$OUT/appcast.xml" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>DevSweep</title>
+    <title>Zelvo</title>
     <link>https://github.com/$REPOSITORY/releases</link>
     <item>
-      <title>DevSweep $VERSION</title>
+      <title>Zelvo $VERSION</title>
       <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
       <sparkle:version>$VERSION</sparkle:version>
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>

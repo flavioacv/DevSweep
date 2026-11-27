@@ -1,9 +1,10 @@
 {
   "name": "@flavioacv/devsweep",
   "version": "0.0.0",
-  "description": "Installer for DevSweep, the macOS menu bar app that cleans dev processes and caches",
+  "description": "Installer for Zelvo, the macOS app for storage cleanup, developer workspaces and system monitoring",
   "bin": {
-    "devsweep": "install.js"
+    "devsweep": "install.js",
+    "zelvo": "install.js"
   },
   "type": "commonjs",
   "files": [

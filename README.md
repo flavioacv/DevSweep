@@ -1,4 +1,8 @@
-# DevSweep
+# Zelvo
+
+<p align="center"><img src="Resources/AppIcon-source.png" width="160" alt="Zelvo app icon"></p>
+
+**More space. More clarity.** Zelvo is the new identity of this DevSweep fork, with Mac cleanup, developer workspace analysis and system monitoring. Upstream attribution and the MIT license are retained. Existing screenshots may show the previous identity.
 
 [![CI](https://github.com/Lukitaduarte/DevSweep/actions/workflows/ci.yml/badge.svg)](https://github.com/Lukitaduarte/DevSweep/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Lukitaduarte/DevSweep/actions/workflows/codeql.yml/badge.svg)](https://github.com/Lukitaduarte/DevSweep/actions/workflows/codeql.yml)
@@ -65,7 +69,7 @@ The extended YAML catalog adds 14 developer-cache rules (pip, uv, Conda archives
 
 Official cache references: [pip](https://pip.pypa.io/en/stable/topics/caching/), [uv](https://docs.astral.sh/uv/concepts/cache/), [Conda](https://docs.conda.io/projects/conda/en/stable/commands/clean.html), [Cargo](https://doc.rust-lang.org/cargo/guide/cargo-home.html), [Composer](https://getcomposer.org/doc/06-config.md#cache-dir), [ccache](https://ccache.dev/manual/latest.html), [mise](https://mise.jdx.dev/directories.html), [pre-commit](https://pre-commit.com/#managing-ci-caches), [Terraform](https://developer.hashicorp.com/terraform/cli/config/config-file#provider-plugin-cache), [Corepack](https://github.com/nodejs/corepack#environment-variables), [RubyGems](https://guides.rubygems.org/environment-variables/), [Bundler](https://guides.rubygems.org/caching-and-vendoring/), [opam](https://opam.ocaml.org/doc/man/opam-clean.html). App cache rules use Apple's [bundle cache namespace convention](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/MacOSXDirectories/MacOSXDirectories.html); not every app uses that convention.
 
-**App leftovers** compares exact identifiers against the bounded application inventory. A candidate can be removed only when successful application removal with that identifier was recorded in DevSweep cleanup history (retained up to 500 entries). Unknown candidates and personal containers remain analysis-only. Preferences and application data require individual selection. The inventory is checked again before removal to protect reinstalled apps; absence in these locations does not prove absence from every disk or custom folder.
+**App leftovers** compares exact identifiers against the bounded application inventory. A candidate can be removed only when successful application removal with that identifier was recorded in Zelvo cleanup history (retained up to 500 entries). Unknown candidates and personal containers remain analysis-only. Preferences and application data require individual selection. The inventory is checked again before removal to protect reinstalled apps; absence in these locations does not prove absence from every disk or custom folder.
 
 Maintenance file review offers old saved states (30 days with recursive activity revalidation), corrupt plist preferences and old Finder lists (90 days). Resetting preferences/lists can lose settings, so it requires explicit selection and Trash confirmation. The maintenance audit reports missing-executable LaunchAgents without unloading them. In App leftovers, removal additionally requires a recorded owning-app uninstall, a fresh absence check for the app family and explicit not-found responses for the label in GUI, user and system launchd domains. Loaded, unknown or permission-denied services remain report-only. Database maintenance supports Safari history, Gatekeeper history and supported notification/CoreDuet database locations: checks identity, open handles and integrity, creates a backup in a user-owned directory with mode 0700, then compacts and checks integrity again. Safari must be closed. Notification/CoreDuet compaction does not delete history. Gatekeeper cleanup removes only records older than 90 days when the expected schema is present. Backups are retained, not silently discarded; these are conservative observations and SQLite locking, not an atomic lock of the owning application.
 
@@ -103,13 +107,13 @@ brew install --cask devsweep
 
 Homebrew 7 refuses to load casks from a tap you haven't trusted, which is why the first command exists — it's Homebrew asking you to confirm you meant to install software from outside its official taps, and it's a good habit to read what a tap contains before trusting it. Here that's a [single file](Casks/devsweep.rb). The trust command names the URL rather than `lukitaduarte/devsweep`, because a tap whose repository isn't named `homebrew-something` is matched by URL only.
 
-Both paths download the release from GitHub, check it against the published SHA-256 and put **DevSweep.app** in `/Applications`.
+Both paths download the release from GitHub, check it against the published SHA-256 and put **Zelvo.app** in `/Applications`.
 
-Prefer to do it by hand? Download `DevSweep-x.y.z.zip` from the [latest release](https://github.com/Lukitaduarte/DevSweep/releases/latest), unzip it and move the app to `/Applications`.
+Prefer to do it by hand? Download `Zelvo-x.y.z.zip` from the [latest release](https://github.com/Lukitaduarte/DevSweep/releases/latest), unzip it and move the app to `/Applications`.
 
 ### The first launch
 
-DevSweep is **not notarized by Apple**, because notarizing requires a paid Apple Developer account. macOS therefore blocks the first launch of anything it downloaded and quarantined, with *"Apple could not verify DevSweep.app is free of malware"*.
+Zelvo is **not notarized by Apple**, because notarizing requires a paid Apple Developer account. macOS therefore blocks the first launch of anything it downloaded and quarantined, with *"Apple could not verify Zelvo.app is free of malware"*.
 
 - **Homebrew** quarantines what it installs, so you will see it. Allow it once in **System Settings → Privacy & Security → Open Anyway**, or install with `brew install --cask --no-quarantine devsweep` if you'd rather opt out of the check knowingly.
 - **A manual download** behaves the same way: allow it once in System Settings.
@@ -122,14 +126,14 @@ Updates install normally afterwards either way. If you want to know what you're 
 Every release asset is signed with [Sigstore](https://sigstore.dev) by the release workflow, carries SLSA build provenance and ships with an SBOM. The quickest check needs only the GitHub CLI:
 
 ```bash
-gh attestation verify DevSweep-x.y.z.zip --repo Lukitaduarte/DevSweep
+gh attestation verify Zelvo-x.y.z.zip --repo flavioacv/DevSweep
 ```
 
 Or, with [cosign](https://docs.sigstore.dev/cosign/), against the signature bundle published next to the file:
 
 ```bash
-cosign verify-blob DevSweep-x.y.z.zip \
-  --bundle DevSweep-x.y.z.zip.sigstore.json \
+cosign verify-blob Zelvo-x.y.z.zip \
+  --bundle Zelvo-x.y.z.zip.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/Lukitaduarte/DevSweep/\.github/workflows/release\.yml@refs/(heads/main|tags/v.+)$' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -141,14 +145,14 @@ The identity covers both refs the workflow runs from: `refs/heads/main` for a no
 Requires macOS 14+ and Xcode 16+ (or a Swift 6 toolchain).
 
 ```bash
-git clone https://github.com/Lukitaduarte/DevSweep.git
+git clone https://github.com/flavioacv/DevSweep.git
 cd DevSweep
 make install     # builds, copies to /Applications and launches
 ```
 
 Builds from source don't update themselves (they aren't signed with the release key). **Settings → Updates** links to the releases page instead.
 
-To see what DevSweep would suggest on your Mac without changing anything:
+To see what Zelvo would suggest on your Mac without changing anything:
 
 ```bash
 DEVSWEEP_LIVE=1 swift test --filter LiveReportTests
@@ -156,11 +160,11 @@ DEVSWEEP_LIVE=1 swift test --filter LiveReportTests
 
 ## Updates
 
-DevSweep checks this repository's releases once a day using [Sparkle](https://sparkle-project.org). Every update is signed with an EdDSA key and verified before it's installed. In **Settings → Updates** you can check now, turn on automatic installs, or open the releases and changelog.
+Zelvo checks this repository's releases once a day using [Sparkle](https://sparkle-project.org). Every update is signed with an EdDSA key and verified before it's installed. In **Settings → Updates** you can check now, turn on automatic installs, or open the releases and changelog.
 
 ## Your project folders
 
-The first time you open DevSweep it asks where your projects live, and **recommends nothing until
+The first time you open Zelvo it asks where your projects live, and **recommends nothing until
 you confirm the list**. That list is not cosmetic: "this Flutter SDK is unused" and "this project
 has been idle for weeks" are both derived from it. A folder missing from the list makes a project
 you work in every day look abandoned — and its pinned SDK look disposable.
@@ -172,7 +176,7 @@ Two sources, both only proposals you can edit before confirming:
 1. **Folders your editors have open.** VS Code and its forks (Code, Insiders, Cursor, Antigravity
    IDE, Windsurf, VSCodium) record opened folders in `User/globalStorage/storage.json`, and
    JetBrains IDEs (IntelliJ, Android Studio, GoLand, PyCharm…) in `options/recentProjects.xml`.
-   DevSweep reads those lists and proposes the **parent folder** of each project, so wherever you
+   Zelvo reads those lists and proposes the **parent folder** of each project, so wherever you
    actually work gets found even if its name is unusual.
 2. **Conventional folder names**, when they exist in your home folder:
 
@@ -182,12 +186,12 @@ Two sources, both only proposals you can edit before confirming:
    | JetBrains IDEs | `~/StudioProjects` `~/AndroidStudioProjects` `~/IdeaProjects` `~/PycharmProjects` `~/WebstormProjects` `~/GolandProjects` `~/PhpstormProjects` `~/RubymineProjects` `~/CLionProjects` `~/RiderProjects` `~/DataGripProjects` |
    | Other tools | `~/eclipse-workspace` `~/NetBeansProjects` `~/Documents/GitHub` (GitHub Desktop) `~/Unity` |
 
-Parent folders are enough — DevSweep looks a few levels inside each one. Your home folder itself is
+Parent folders are enough — Zelvo looks a few levels inside each one. Your home folder itself is
 never proposed, and the list is capped at 8 entries. Change it any time in **Settings → Projects**.
 
 ### What it reads, and what it doesn't
 
-Inside those folders DevSweep reads only what it needs to tell projects apart: marker files
+Inside those folders Zelvo reads only what it needs to tell projects apart: marker files
 (`pubspec.yaml`, `package.json`, `go.mod`, …), the FVM pin, and modification dates. **It never reads
 your source code.** The editor lists above are read once, locally, to propose the folders; nothing
 about them leaves your machine.
@@ -276,7 +280,7 @@ Then click **Settings → Stacks → Reload**. Entries with the same `id` as a b
 
 ## Trust and security
 
-DevSweep deletes files and stops processes, so it's built to be easy to audit:
+Zelvo deletes files and stops processes, so it's built to be easy to audit:
 
 - **Open and small.** What gets detected and cleaned is plain YAML in [`stacks/`](stacks). Nothing is hidden in code.
 - **Guard rails in code.**
@@ -327,3 +331,7 @@ scripts/         app bundle, release packaging, signing keys, screenshot redacti
 ## License
 
 [MIT](LICENSE)
+
+### Identity and upgrade compatibility
+
+The app is now **Zelvo.app**. The Swift module/executable, `io.github.devsweep.DevSweep` bundle identifier, legacy preferences, cleanup history/backups, `~/.config/devsweep`, GitHub repository and Sparkle feed remain stable to preserve existing installations. The npm package `@flavioacv/devsweep` and Homebrew cask `devsweep` are compatibility distribution names, not separate apps; the npm executable also has a `zelvo` alias. Releases contain Zelvo archives plus DevSweep archive aliases for older installers. No new package, repository rename or release publication is implied by this change. Old separately installed app copies are not deleted automatically.

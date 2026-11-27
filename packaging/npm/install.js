@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Downloads a DevSweep release, checks it against the SHA-256 published with it, and
+// Downloads a Zelvo release, checks it against the SHA-256 published with it, and
 // installs the app. Run with `npx devsweep`.
 //
 //   npx devsweep                 install the latest release into /Applications
@@ -62,17 +62,18 @@ async function main() {
     return;
   }
   if (process.platform !== "darwin") {
-    throw new Error("DevSweep is a macOS app.");
+    throw new Error("Zelvo is a macOS app.");
   }
 
   const release = await fetchRelease(options.version);
-  const asset = release.assets.find((item) => /^DevSweep-.*\.zip$/.test(item.name));
+  const asset = release.assets.find((item) => /^Zelvo-.*\.zip$/.test(item.name))
+    ?? release.assets.find((item) => /^DevSweep-.*\.zip$/.test(item.name));
   if (!asset) {
     throw new Error(`release ${release.tag_name} has no app attached yet.`);
   }
   const checksumAsset = release.assets.find((item) => item.name === `${asset.name}.sha256`);
 
-  console.log(`Downloading DevSweep ${release.tag_name}…`);
+  console.log(`Downloading Zelvo ${release.tag_name}…`);
   const archive = await download(asset.browser_download_url);
 
   if (!checksumAsset) {
@@ -116,7 +117,7 @@ async function main() {
 
     if (options.open) {
       execFileSync("/usr/bin/open", [target]);
-      console.log("DevSweep is now in your menu bar.");
+      console.log("Zelvo is now in your menu bar.");
     }
   } finally {
     await rm(workingDirectory, { recursive: true, force: true });

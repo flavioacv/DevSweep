@@ -1,7 +1,12 @@
-// Renders the app icon into an .iconset folder: swift scripts/make-icon.swift <output.iconset>
+// Packages the approved Zelvo artwork into all macOS .iconset representations.
 import AppKit
 
 let output = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "AppIcon.iconset"
+let source = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "Resources/AppIcon-source.png"
+guard let artwork = NSImage(contentsOfFile: source) else {
+    fputs("Unable to read icon artwork.\n", stderr)
+    exit(1)
+}
 try FileManager.default.createDirectory(atPath: output, withIntermediateDirectories: true)
 
 func render(_ pixels: Int) -> Data {
@@ -12,23 +17,8 @@ func render(_ pixels: Int) -> Data {
     )!
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
-    let size = CGFloat(pixels)
-    let inset = size * 0.1
-    let tile = NSBezierPath(
-        roundedRect: NSRect(x: inset, y: inset, width: size - inset * 2, height: size - inset * 2),
-        xRadius: size * 0.18, yRadius: size * 0.18
-    )
-    NSGradient(
-        starting: NSColor(calibratedRed: 0.16, green: 0.47, blue: 0.98, alpha: 1),
-        ending: NSColor(calibratedRed: 0.47, green: 0.27, blue: 0.94, alpha: 1)
-    )!.draw(in: tile, angle: -60)
-
-    let config = NSImage.SymbolConfiguration(pointSize: size * 0.4, weight: .semibold)
-        .applying(NSImage.SymbolConfiguration(paletteColors: [.white]))
-    if let symbol = NSImage(systemSymbolName: "sparkles", accessibilityDescription: nil)?.withSymbolConfiguration(config) {
-        let s = symbol.size
-        symbol.draw(in: NSRect(x: (size - s.width) / 2, y: (size - s.height) / 2, width: s.width, height: s.height))
-    }
+    NSGraphicsContext.current?.imageInterpolation = .high
+    artwork.draw(in: NSRect(x: 0, y: 0, width: pixels, height: pixels), from: .zero, operation: .copy, fraction: 1)
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])!
 }

@@ -70,7 +70,7 @@ echo "✓ $APP ($VERSION)"
 if [[ "${1:-}" == "--install" ]]; then
   pkill -x DevSweep 2>/dev/null || true
   pkill -x Zelvo 2>/dev/null || true
-  rm -rf /Applications/Zelvo.app
+  rm -rf /Applications/DevSweep.app /Applications/Zelvo.app
   cp -R "$APP" /Applications/
   open /Applications/Zelvo.app
   echo "✓ Installed in /Applications and launched"

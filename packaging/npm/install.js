@@ -58,7 +58,7 @@ async function download(url) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
-    console.log("usage: npx @flavioacv/devsweep [--version x.y.z] [--to /Applications] [--no-open]");
+    console.log("usage: npx @flavioacv/zelvo [--version x.y.z] [--to /Applications] [--no-open]");
     return;
   }
   if (process.platform !== "darwin") {
@@ -100,14 +100,20 @@ async function main() {
       throw new Error("the archive did not contain an app.");
     }
     const target = join(options.destination, app);
-    if (existsSync(target)) {
-      console.log(`Replacing ${target}…`);
-      try {
-        execFileSync("/usr/bin/pkill", ["-x", "DevSweep"], { stdio: "ignore" });
-      } catch {
-        // Not running, nothing to stop.
+    const legacyTarget = app === "Zelvo.app" ? join(options.destination, "DevSweep.app") : null;
+    const toRemove = [target, legacyTarget].filter((item) => item && existsSync(item));
+    if (toRemove.length > 0) {
+      for (const proc of ["DevSweep", "Zelvo"]) {
+        try {
+          execFileSync("/usr/bin/pkill", ["-x", proc], { stdio: "ignore" });
+        } catch {
+          // Not running, nothing to stop.
+        }
       }
-      await rm(target, { recursive: true, force: true });
+      for (const existing of toRemove) {
+        console.log(`Replacing ${existing}…`);
+        await rm(existing, { recursive: true, force: true });
+      }
     }
     // Without this, copying into a folder that doesn't exist yet would turn the folder
     // itself into the app bundle.
@@ -125,6 +131,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`devsweep: ${error.message}`);
+  console.error(`zelvo: ${error.message}`);
   process.exit(1);
 });

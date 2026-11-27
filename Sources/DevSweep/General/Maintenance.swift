@@ -1,6 +1,69 @@
 import Foundation
 import Darwin
 
+/// Reads cached kernel mount entries (`getfsstat(MNT_NOWAIT)`) without touching any volume.
+enum MountTableGuard {
+    struct Entry: Sendable, Equatable {
+        let mountPoint: String
+        let fsType: String
+        let isLocal: Bool
+    }
+
+    private static let syntheticTypes: Set<String> = ["autofs", "devfs", "nullfs", "volfs", "fdesc"]
+
+    static func mountedEntries() -> [Entry]? {
+        let count = getfsstat(nil, 0, MNT_NOWAIT)
+        guard count > 0 else { return count == 0 ? [] : nil }
+        var stats = Array<Darwin.statfs>(repeating: Darwin.statfs(), count: Int(count))
+        let byteSize = Int32(stats.count * MemoryLayout<Darwin.statfs>.stride)
+        let read = stats.withUnsafeMutableBufferPointer { buffer in
+            getfsstat(buffer.baseAddress, byteSize, MNT_NOWAIT)
+        }
+        guard read >= 0 else { return nil }
+        return stats.prefix(Int(read)).map { item in
+            let mountPoint = withUnsafePointer(to: item.f_mntonname) {
+                $0.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) { String(cString: $0) }
+            }
+            let fsType = withUnsafePointer(to: item.f_fstypename) {
+                $0.withMemoryRebound(to: CChar.self, capacity: Int(MFSTYPENAMELEN)) { String(cString: $0) }
+            }
+            return Entry(mountPoint: mountPoint, fsType: fsType.lowercased(), isLocal: (item.f_flags & UInt32(MNT_LOCAL)) != 0)
+        }
+    }
+
+    static func networkVolumes(in entries: [Entry]?) -> [String]? {
+        guard let entries else { return nil }
+        return entries.filter { !$0.isLocal && !syntheticTypes.contains($0.fsType) }.map(\.mountPoint)
+    }
+}
+
+/// Read-only audit of Spotlight exclusion rules exported from the live `com.apple.Spotlight` domain.
+enum SpotlightRulesAudit {
+    static func orphanPaths(from plistData: Data, home: URL, exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> [String]? {
+        guard let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any] else { return nil }
+        var candidates: [String] = []
+        if let exclusions = plist["Exclusions"] as? [String] {
+            candidates += exclusions
+        }
+        if let items = plist["orderedItems"] as? [[String: Any]] {
+            for item in items {
+                if let path = item["path"] as? String { candidates.append(path) }
+            }
+        }
+        let homePath = home.standardizedFileURL.path
+        var orphans: [String] = []
+        var seen = Set<String>()
+        for raw in candidates {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let expanded = trimmed.hasPrefix("~/") ? homePath + "/" + trimmed.dropFirst(2) : trimmed
+            guard expanded.hasPrefix("/"), seen.insert(expanded).inserted else { continue }
+            if !exists(expanded) { orphans.append(expanded) }
+        }
+        return orphans.sorted()
+    }
+}
+
 enum MaintenanceTask: String, CaseIterable, Identifiable, Sendable {
     case launchAgents, preferences, spotlight, loginItems, verifyDisk, dns, quickLook
     case iconCache, savedStates, repairPreferences, sqlite, preventDSStore, legacyOverrides, networkReset, permissions
@@ -67,9 +130,45 @@ enum MaintenanceTask: String, CaseIterable, Identifiable, Sendable {
 
     func run(home: URL, control: ScanControl, searchRoots: [URL]? = nil,
              executor: (String, [String], ScanControl) -> ShellResult = { executable, args, flag in Shell.run(executable, args, timeout: 120, shouldCancel: { flag.isCancelled }) },
-             usage: ApplicationUsageSnapshot? = nil) -> ShellResult {
+             usage: ApplicationUsageSnapshot? = nil,
+             networkVolumesProvider: () -> [String]? = { MountTableGuard.networkVolumes(in: MountTableGuard.mountedEntries()) },
+             pathExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> ShellResult {
         if control.isCancelled { return ShellResult(status: -2, stdout: "", stderr: tr("general.cancelled")) }
         if self == .dockerAudit || self == .dockerPrune { return DockerMaintenance.run(execute: self == .dockerPrune, control: control, runner: { executor($0, $1, control) }) }
+        if self == .backups {
+            guard let networkVolumes = networkVolumesProvider() else {
+                return ShellResult(status: 0, stdout: tr("maintenance.network_volume_skipped"), stderr: "")
+            }
+            if !networkVolumes.isEmpty {
+                return ShellResult(status: 0, stdout: tr("maintenance.network_volume_skipped"), stderr: "")
+            }
+            let snapshots = executor("/usr/bin/tmutil", ["listlocalsnapshots", "/"], control)
+            let backups = executor("/usr/bin/tmutil", ["listbackups"], control)
+            var sections: [String] = []
+            if snapshots.status == 0 {
+                let text = snapshots.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty { sections.append(tr("maintenance.local_snapshots") + "\n" + text) }
+            }
+            let backupText = backups.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !backupText.isEmpty { sections.append(backupText) }
+            let status = (snapshots.status == 0 || backups.status == 0) ? 0 : backups.status
+            return ShellResult(status: status, stdout: sections.joined(separator: "\n\n"), stderr: backups.stderr)
+        }
+        if self == .spotlightRules {
+            let statusResult = executor("/usr/bin/mdutil", ["-s", "-a"], control)
+            let exported = executor("/usr/bin/defaults", ["export", "com.apple.Spotlight", "-"], control)
+            var lines: [String] = []
+            let mdOut = statusResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !mdOut.isEmpty { lines.append(mdOut) }
+            if exported.status == 0, let orphans = SpotlightRulesAudit.orphanPaths(from: Data(exported.stdout.utf8), home: home, exists: pathExists) {
+                if orphans.isEmpty {
+                    lines.append(tr("maintenance.spotlight_rules_clean"))
+                } else {
+                    lines += orphans.map { tr("maintenance.spotlight_orphan_rule", ["path": $0]) }
+                }
+            }
+            return ShellResult(status: statusResult.status, stdout: lines.joined(separator: "\n"), stderr: statusResult.stderr)
+        }
         if let (executable, args) = command {
             guard FileManager.default.isExecutableFile(atPath: executable) else { return ShellResult(status: 127, stdout: "", stderr: tr("maintenance.unsupported")) }
             if self == .permissions {

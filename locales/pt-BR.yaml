@@ -365,6 +365,10 @@ maintenance.notifications: "Compactar banco de notificações (sem apagar histó
 maintenance.coreduet: "Compactar banco CoreDuet (sem apagar histórico)"
 maintenance.sensor_report: "Ler sensores de hardware uma vez (administrador)"
 maintenance.backups: "Inspecionar backups Time Machine (somente leitura)"
+maintenance.local_snapshots: "Snapshots APFS locais:"
+maintenance.network_volume_skipped: "Inspeção do Time Machine ignorada porque há volume de rede montado (ou tabela de montagem indisponível)."
+maintenance.spotlight_orphan_rule: "Regra órfã do Spotlight: {path}"
+maintenance.spotlight_rules_clean: "Nenhum caminho órfão encontrado nas exclusões do Spotlight."
 
 docker.local_only: "Não foi possível verificar um engine local por socket Unix e um único builder local do driver Docker. Nada removido."
 docker.audit: "Inspecionar armazenamento Docker local (somente leitura)"

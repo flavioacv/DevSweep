@@ -365,6 +365,10 @@ maintenance.notifications: "Compactar base de notificaciones (sin borrar histori
 maintenance.coreduet: "Compactar base CoreDuet (sin borrar historial)"
 maintenance.sensor_report: "Leer sensores una vez (administrador)"
 maintenance.backups: "Inspeccionar respaldos Time Machine (solo lectura)"
+maintenance.local_snapshots: "Instantáneas APFS locales:"
+maintenance.network_volume_skipped: "Inspección de Time Machine omitida porque hay un volumen de red montado (o la tabla de montaje no está disponible)."
+maintenance.spotlight_orphan_rule: "Regla huérfana de Spotlight: {path}"
+maintenance.spotlight_rules_clean: "No se encontraron rutas huérfanas en las exclusiones de Spotlight."
 
 docker.local_only: "No se pudo verificar un motor local Unix y un único builder local Docker. No se eliminó nada."
 docker.audit: "Inspeccionar almacenamiento Docker local (solo lectura)"

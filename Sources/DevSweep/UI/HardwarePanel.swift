@@ -122,31 +122,37 @@ struct HardwarePanel: View {
 
                 Divider()
 
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
                         Text(tr("monitor.tunnels_label"))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        if hardware.tunnels.isEmpty {
-                            StatusBadge(text: tr("hardware.none"), color: .secondary)
-                        } else {
-                            ForEach(hardware.tunnels, id: \.self) { tunnel in
-                                StatusBadge(text: tunnel, systemImage: "lock.shield", color: .blue)
+                            .padding(.top, 3)
+                        FlowLayout(spacing: 6) {
+                            if hardware.tunnels.isEmpty {
+                                StatusBadge(text: tr("hardware.none"), color: .secondary)
+                            } else {
+                                ForEach(hardware.tunnels, id: \.self) { tunnel in
+                                    StatusBadge(text: tunnel, systemImage: "lock.shield", color: .blue)
+                                }
                             }
                         }
                     }
 
-                    HStack(spacing: 6) {
+                    HStack(alignment: .top, spacing: 8) {
                         Text(tr("monitor.proxies_label"))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        if !hardware.proxiesAvailable {
-                            StatusBadge(text: tr("storage.unavailable"), color: .orange)
-                        } else if hardware.proxies.isEmpty {
-                            StatusBadge(text: tr("hardware.none"), color: .secondary)
-                        } else {
-                            ForEach(hardware.proxies, id: \.self) { proxy in
-                                StatusBadge(text: proxy, systemImage: "arrow.triangle.branch", color: .orange)
+                            .padding(.top, 3)
+                        FlowLayout(spacing: 6) {
+                            if !hardware.proxiesAvailable {
+                                StatusBadge(text: tr("storage.unavailable"), color: .orange)
+                            } else if hardware.proxies.isEmpty {
+                                StatusBadge(text: tr("hardware.none"), color: .secondary)
+                            } else {
+                                ForEach(hardware.proxies, id: \.self) { proxy in
+                                    StatusBadge(text: proxy, systemImage: "arrow.triangle.branch", color: .orange)
+                                }
                             }
                         }
                     }

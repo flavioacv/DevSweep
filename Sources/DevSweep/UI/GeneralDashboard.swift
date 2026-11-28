@@ -1230,7 +1230,7 @@ private struct GeneralMonitorView: View {
                     }
                 }
 
-                HStack(spacing: 12) {
+                FlowLayout(spacing: 8) {
                     MetricPill(
                         label: tr("monitor.cache_label"),
                         value: system.memCache.map { Fmt.memory($0) } ?? tr("storage.unavailable"),
@@ -1291,7 +1291,7 @@ private struct GeneralMonitorView: View {
                         caption: batteryFraction.formatted(.percent.precision(.fractionLength(0))),
                         tint: batteryFraction < 0.2 ? .orange : .green
                     )
-                    HStack(spacing: 8) {
+                    FlowLayout(spacing: 6) {
                         if snapshot.charging == true {
                             StatusBadge(text: tr("monitor.battery_charging"), systemImage: "bolt.fill", color: .green)
                         }
@@ -1308,7 +1308,7 @@ private struct GeneralMonitorView: View {
                         }
                     }
                 } else if let battery = hardware.battery {
-                    HStack(spacing: 8) {
+                    FlowLayout(spacing: 6) {
                         if let cycles = battery.cycles {
                             Text(tr("hardware.cycles", ["count": cycles]))
                                 .font(.caption.monospacedDigit())
@@ -1338,21 +1338,7 @@ private struct GeneralMonitorView: View {
                     title: tr("general.volumes"),
                     systemImage: "internaldrive",
                     tint: .orange
-                ) {
-                    if !model.smartStatus.isEmpty {
-                        HStack(spacing: 6) {
-                            ForEach(model.smartStatus.keys.sorted(), id: \.self) { disk in
-                                let status = model.smartStatus[disk] ?? tr("storage.unavailable")
-                                let isFailing = status.lowercased() == "failing"
-                                StatusBadge(
-                                    text: "SMART \(disk): \(status)",
-                                    systemImage: isFailing ? "exclamationmark.triangle.fill" : "checkmark.circle",
-                                    color: isFailing ? .red : (status.lowercased() == "verified" ? .green : .secondary)
-                                )
-                            }
-                        }
-                    }
-                }
+                )
 
                 if snapshot.volumes.isEmpty {
                     Text(tr("storage.unavailable")).font(.caption).foregroundStyle(.secondary)
@@ -1394,6 +1380,26 @@ private struct GeneralMonitorView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+
+                if !model.smartStatus.isEmpty {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("SMART")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        FlowLayout(spacing: 6) {
+                            ForEach(model.smartStatus.keys.sorted(), id: \.self) { disk in
+                                let status = model.smartStatus[disk] ?? tr("storage.unavailable")
+                                let isFailing = status.lowercased() == "failing"
+                                StatusBadge(
+                                    text: "\(disk): \(status)",
+                                    systemImage: isFailing ? "exclamationmark.triangle.fill" : (status.lowercased() == "verified" ? "checkmark.circle.fill" : "minus.circle"),
+                                    color: isFailing ? .red : (status.lowercased() == "verified" ? .green : .secondary)
+                                )
                             }
                         }
                     }

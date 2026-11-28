@@ -17,11 +17,15 @@ struct MenuView: View {
         VStack(spacing: 0) {
             if !workspacesConfirmed {
                 WelcomeView { model.prefsChanged() }
+                Divider()
+                workspaceUtilityBar
             } else if showingSettings {
                 SettingsView {
                     showingSettings = false
                     model.prefsChanged()
                 }
+                Divider()
+                workspaceUtilityBar
             } else {
                 HeaderView { showingSettings = true }
                 Picker("", selection: $tab) {
@@ -50,18 +54,38 @@ struct MenuView: View {
                 .animation(.easeInOut(duration: 0.2), value: model.banner)
                 CleanupStatusView()
                 Divider()
-                FooterView()
+                FooterView(openWorkspace: openGeneralWorkspace)
             }
-            Button {
-                openWindow(id: "general")
-                NSApp.activate(ignoringOtherApps: true)
-            } label: { Label(tr("general.open"), systemImage: "macwindow") }
-            .buttonStyle(.borderless)
-            .padding(8)
         }
         .frame(width: 470, height: 680)
         .id(model.languageRevision)
         .onAppear { model.popoverOpened() }
+    }
+
+    private var workspaceUtilityBar: some View {
+        HStack {
+            Button(action: openGeneralWorkspace) {
+                Label(tr("general.open"), systemImage: "macwindow")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            Spacer()
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Image(systemName: "power")
+            }
+            .buttonStyle(.borderless)
+            .help(tr("footer.quit"))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
+    }
+
+    private func openGeneralWorkspace() {
+        openWindow(id: "general")
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func label(for tab: MenuTab) -> String {
@@ -84,6 +108,8 @@ private struct HeaderView: View {
     var body: some View {
         let system = model.system
         let lowDisk = Double(system.diskFree) < Prefs.defaults.double(forKey: Prefs.Key.lowDiskGB) * 1e9
+        let diskUsedFraction = system.diskTotal > 0 ? 1 - Double(system.diskFree) / Double(system.diskTotal) : 0
+
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Image(nsImage: MenuBarLabel.brandIcon).foregroundStyle(.tint)
@@ -99,19 +125,54 @@ private struct HeaderView: View {
                     .buttonStyle(.borderless)
                     .help(tr("header.settings"))
             }
-            HStack(spacing: 16) {
-                MeterView(
-                    title: tr("header.ram", ["pressure": system.pressure.label]),
-                    fraction: system.memFraction,
-                    caption: "\(Fmt.memory(system.memUsed)) / \(Fmt.memory(system.memTotal))",
-                    tint: system.memoryTight ? system.pressure == .critical ? .red : .orange : .green
-                )
-                MeterView(
-                    title: tr("header.disk"),
-                    fraction: system.diskTotal > 0 ? 1 - Double(system.diskFree) / Double(system.diskTotal) : 0,
-                    caption: tr("header.disk_free", ["size": Fmt.disk(system.diskFree)]),
-                    tint: lowDisk ? .red : .blue
-                )
+
+            HStack(spacing: 10) {
+                TechnicalCard(cornerRadius: 8, padding: 8) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 4) {
+                            Text(tr("general.memory"))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            StatusBadge(
+                                text: system.pressureAvailable ? system.pressure.label : tr("storage.unavailable"),
+                                color: system.pressureAvailable ? system.pressure.color : .secondary
+                            )
+                        }
+                        ProportionalBar(
+                            fraction: system.memFraction,
+                            tint: system.memoryTight ? (system.pressure == .critical ? .red : .orange) : .green,
+                            height: 4.5
+                        )
+                        Text("\(Fmt.memory(system.memUsed)) / \(Fmt.memory(system.memTotal))")
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                TechnicalCard(cornerRadius: 8, padding: 8) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 4) {
+                            Text(tr("header.disk"))
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(tr("header.disk_free", ["size": Fmt.disk(system.diskFree)]))
+                                .font(.caption2.monospacedDigit().weight(.medium))
+                                .foregroundStyle(lowDisk ? Color.red : Color.secondary)
+                        }
+                        ProportionalBar(
+                            fraction: diskUsedFraction,
+                            tint: lowDisk ? .red : .blue,
+                            height: 4.5
+                        )
+                        Text(Fmt.disk(system.diskTotal))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
         }
         .padding(12)
@@ -120,45 +181,70 @@ private struct HeaderView: View {
 
 private struct FooterView: View {
     @EnvironmentObject private var model: AppModel
+    let openWorkspace: () -> Void
 
     var body: some View {
         let actionable = model.recommendations.filter { $0.risk != .dataLoss }
         let disk = actionable.reduce(0) { $0 + $1.diskBytes }
         let ram = actionable.reduce(0) { $0 + $1.ramBytes }
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(tr("footer.total_freed")).font(.caption2).foregroundStyle(.secondary)
-                Text(Fmt.disk(model.totalFreed)).font(.caption.monospacedDigit().weight(.medium))
-            }
-            Spacer()
-            if !actionable.isEmpty {
-                Button {
-                    Task { await model.performAllRecommended() }
-                } label: {
-                    HStack(spacing: 6) {
-                        if model.isPerformingAll {
-                            ProgressView().controlSize(.mini)
-                        } else {
-                            Image(systemName: "wand.and.stars")
-                        }
-                        Text(tr("footer.clean_recommended"))
-                        Text([disk > 0 ? Fmt.disk(disk) : nil, ram > 0 ? tr("footer.ram", ["size": Fmt.memory(ram)]) : nil]
-                            .compactMap { $0 }.joined(separator: " + "))
-                            .foregroundStyle(.white.opacity(0.8))
-                    }
+
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(tr("footer.total_freed"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(Fmt.disk(model.totalFreed))
+                        .font(.caption.monospacedDigit().weight(.semibold))
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(model.isPerformingAll || model.cleanupProgress != nil || model.isScanningStorage)
-                .help(tr("footer.clean_recommended_help"))
+                Spacer()
+                if !actionable.isEmpty {
+                    Button {
+                        Task { await model.performAllRecommended() }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if model.isPerformingAll {
+                                ProgressView().controlSize(.mini)
+                            } else {
+                                Image(systemName: "wand.and.stars")
+                            }
+                            Text(tr("footer.clean_recommended"))
+                            Text([disk > 0 ? Fmt.disk(disk) : nil, ram > 0 ? tr("footer.ram", ["size": Fmt.memory(ram)]) : nil]
+                                .compactMap { $0 }.joined(separator: " + "))
+                                .monospacedDigit()
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(model.isPerformingAll || model.cleanupProgress != nil || model.isScanningStorage)
+                    .help(tr("footer.clean_recommended_help"))
+                }
             }
-            Button {
-                NSApp.terminate(nil)
-            } label: {
-                Image(systemName: "power")
+
+            Divider()
+
+            HStack {
+                Button(action: openWorkspace) {
+                    Label(tr("general.open"), systemImage: "macwindow")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                Spacer()
+
+                Button {
+                    NSApp.terminate(nil)
+                } label: {
+                    Label(tr("footer.quit"), systemImage: "power")
+                        .labelStyle(.iconOnly)
+                }
+                .buttonStyle(.borderless)
+                .help(tr("footer.quit"))
             }
-            .buttonStyle(.borderless)
-            .help(tr("footer.quit"))
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
     }
 }

@@ -13,39 +13,41 @@ struct ProcessesView: View {
 
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(tr("processes.dev_tools")).font(.system(size: 12.5, weight: .semibold))
-                        Text(tr("processes.summary", [
-                            "ram": Fmt.memory(toolRAM),
-                            "count": tools.reduce(0) { $0 + $1.processCount },
-                            "limbo": limboCount,
-                        ]))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if limboCount > 0 {
-                        Button {
-                            Task { await model.stopAllLimbo() }
-                        } label: {
-                            HStack(spacing: 5) {
-                                if model.busy.contains("limbo-all") {
-                                    ProgressView().controlSize(.mini)
-                                } else {
-                                    Image(systemName: "bolt.horizontal.circle")
-                                }
-                                Text(tr("processes.stop_limbo", ["ram": Fmt.memory(limboRAM)]))
-                            }
+                TechnicalCard(cornerRadius: 10, tint: limboCount > 0 ? .orange : nil, padding: 10) {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(tr("processes.dev_tools"))
+                                .font(.system(size: 12.5, weight: .semibold))
+                            Text(tr("processes.summary", [
+                                "ram": Fmt.memory(toolRAM),
+                                "count": tools.reduce(0) { $0 + $1.processCount },
+                                "limbo": limboCount,
+                            ]))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .tint(.orange)
-                        .controlSize(.small)
-                        .disabled(model.busy.contains("limbo-all"))
+                        Spacer()
+                        if limboCount > 0 {
+                            Button {
+                                Task { await model.stopAllLimbo() }
+                            } label: {
+                                HStack(spacing: 5) {
+                                    if model.busy.contains("limbo-all") {
+                                        ProgressView().controlSize(.mini)
+                                    } else {
+                                        Image(systemName: "bolt.horizontal.circle")
+                                    }
+                                    Text(tr("processes.stop_limbo", ["ram": Fmt.memory(limboRAM)]))
+                                        .monospacedDigit()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .controlSize(.small)
+                            .disabled(model.busy.contains("limbo-all"))
+                        }
                     }
                 }
-                .padding(10)
-                .card()
 
                 if tools.isEmpty && !model.isScanningProcesses {
                     Text(tr("processes.none"))
@@ -91,11 +93,11 @@ private struct ProcessGroupView: View {
                     HStack(spacing: 6) {
                         Text(group.rule.title).font(.system(size: 12.5, weight: .medium)).lineLimit(1)
                         if !limbo.isEmpty {
-                            Tag(text: tr("processes.in_limbo", ["count": limbo.count]), color: .orange)
+                            StatusBadge(text: tr("processes.in_limbo", ["count": limbo.count]), color: .orange)
                         }
                     }
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -129,7 +131,7 @@ private struct ProcessGroupView: View {
                 }
             }
         }
-        .card()
+        .technicalCard(cornerRadius: 10)
     }
 
     private var subtitle: String {
@@ -149,17 +151,17 @@ private struct ProcessEntryRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Text("PID \(entry.process.pid)").font(.caption.monospaced())
-                    if entry.isLimbo { Tag(text: tr("processes.tag_limbo"), color: .orange) }
-                    if entry.process.isOrphan && !entry.isLimbo { Tag(text: tr("processes.tag_orphan")) }
-                    ForEach(entry.ports.prefix(3), id: \.self) { Tag(text: ":\($0)", color: .blue) }
+                    if entry.isLimbo { StatusBadge(text: tr("processes.tag_limbo"), color: .orange) }
+                    if entry.process.isOrphan && !entry.isLimbo { StatusBadge(text: tr("processes.tag_orphan")) }
+                    ForEach(entry.ports.prefix(3), id: \.self) { StatusBadge(text: ":\($0)", color: .blue) }
                     if entry.descendantCount > 0 {
                         Text(tr("processes.children", ["count": entry.descendantCount]))
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
                     }
                     Text(tr("processes.running_for", ["age": Fmt.duration(entry.process.elapsed)]))
-                        .font(.caption2).foregroundStyle(.secondary)
+                        .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
                 }
                 Text(entry.process.shortCommand)
                     .font(.system(size: 10, design: .monospaced))
@@ -173,7 +175,7 @@ private struct ProcessEntryRow: View {
             }
             Spacer(minLength: 6)
             Text(Fmt.memory(entry.totalRSS))
-                .font(.caption.monospacedDigit())
+                .font(.caption.monospacedDigit().weight(.medium))
                 .padding(.top, 2)
             ActionButton(
                 symbol: "xmark",

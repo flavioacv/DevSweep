@@ -17,7 +17,8 @@ struct DevSweepApp: App {
         Window("Zelvo", id: "general") {
             GeneralDashboard().environmentObject(model)
         }
-        .defaultSize(width: 1000, height: 740)
+        .defaultSize(width: 1080, height: 760)
+        .windowToolbarStyle(.unified)
     }
 }
 
